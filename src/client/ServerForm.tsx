@@ -3,7 +3,7 @@ import type { McpServerId, McpServerView } from './types.ts'
 import type {
   McpDraft, McpEnvRowDraft, McpTestOutcome,
 } from './mcp-store.ts'
-import { createEnvRowDraft, failureLocaleKey } from './mcp-store.ts'
+import { createEnvRowDraft } from './mcp-store.ts'
 import type { McpSettingsLocaleKey } from './locales.ts'
 import css from './ServerForm.module.css'
 
@@ -63,8 +63,9 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
     actions.setTestRunning(true)
     try {
       actions.setTest(await injected.test(draft))
-    } catch {
+    } catch (error) {
       actions.setTest(null)
+      setSaveError(error instanceof Error ? error.message : String(error))
     } finally {
       actions.setTestRunning(false)
     }
@@ -76,13 +77,13 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
     try {
       const failure = await injected.save(draft)
       if (failure !== null) {
-        setSaveError(t(failureLocaleKey(failure.code)))
+        setSaveError(`${failure.code}: ${failure.message}`)
         return
       }
       await refresh()
       actions.cancelEdit()
-    } catch {
-      setSaveError(t('failureTitle'))
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : String(error))
     } finally {
       actions.setBusy(null)
     }
@@ -100,20 +101,15 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
       }
       await refresh()
       actions.cancelEdit()
-    } catch {
-      setSaveError(t('failureTitle'))
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : String(error))
     } finally {
       actions.setBusy(null)
     }
   }
 
   const refresh = async (): Promise<void> => {
-    try {
-      actions.setServers(await injected.list())
-    } catch {
-      // The save/remove outcome is the actionable one; a failed refresh is
-      // re-run on the next page visit.
-    }
+    actions.setServers(await injected.list())
   }
 
   const stdio = draft.transport === 'stdio'

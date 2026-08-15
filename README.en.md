@@ -35,6 +35,7 @@ dsh-mcp/
 ├── package.json          name=dsh-mcp; dsh.client declaration; zero npm dependencies
 ├── lib/
 │   ├── index.js          host half (McpManagerService, built from mcp-manager)
+│   ├── mcp-client.js     vendored MCP client (from @deepseek-ai/dsh-mcp-client, with tool-list stability extension)
 │   ├── probe.js          vendored connection probe (from mcp-client/src/probe.ts)
 │   ├── transport.js      vendored transport factory (from mcp-client/src/transport.ts)
 │   └── client.js         browser half (esbuild bundle, ModuleLoader wire format)

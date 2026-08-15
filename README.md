@@ -22,6 +22,7 @@ dsh-mcp/
 ├── package.json          name=dsh-mcp；dsh.client 声明；零 npm dependencies
 ├── lib/
 │   ├── index.js          host 半部（McpManagerService，源自 mcp-manager 构建产物）
+│   ├── mcp-client.js     vendored MCP 客户端（源自 @deepseek-ai/dsh-mcp-client，含工具列表稳定扩展）
 │   ├── probe.js          vendored 连接探测（源自 mcp-client/src/probe.ts）
 │   ├── transport.js      vendored 传输工厂（源自 mcp-client/src/transport.ts）
 │   └── client.js         浏览器半部（esbuild 打包，ModuleLoader wire format）

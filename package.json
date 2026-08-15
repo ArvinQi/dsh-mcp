@@ -13,6 +13,7 @@
     "lib",
     "src",
     "scripts",
+    "static",
     "README.md",
     "README.en.md",
     "CHANGELOG.md",

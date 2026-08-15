@@ -1,5 +1,7 @@
 # dsh-mcp — MCP server management plugin for DeepSeek Harness (standalone)
 
+![Settings preview](static/snapshot.webp)
+
 Migrated and merged from uncommitted MCP work in the `deepseek-harness` repository:
 
 | Original package | Migrated to |

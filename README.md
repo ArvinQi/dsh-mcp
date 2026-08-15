@@ -2,6 +2,8 @@
 
 **[English](README.en.md) | 简体中文**
 
+![设置页预览](static/snapshot.webp)
+
 ## 功能
 
 - **托管 MCP 服务器注册表**（host）：持久化定义（storage-domain `mcp_servers`）、按服务器挂载

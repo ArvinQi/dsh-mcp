@@ -102,7 +102,9 @@ export function emptyDraft(): McpDraft {
     headersText: '',
     env: [],
     toolCallTimeoutMs: String(DEFAULT_TOOL_CALL_TIMEOUT_MS),
-    failOnStartupError: false,
+    // Reject the mount by default when the startup connection fails, so a
+    // broken server never registers stale tools.
+    failOnStartupError: true,
   }
 }
 

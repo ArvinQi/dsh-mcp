@@ -3,7 +3,7 @@ import type { McpServerId, McpServerView } from './types.ts'
 import type {
   McpDraft, McpEnvRowDraft, McpTestOutcome,
 } from './mcp-store.ts'
-import { createEnvRowDraft } from './mcp-store.ts'
+import { createEnvRowDraft, failureLocaleKey } from './mcp-store.ts'
 import type { McpSettingsLocaleKey } from './locales.ts'
 import css from './ServerForm.module.css'
 
@@ -76,7 +76,7 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
     try {
       const failure = await injected.save(draft)
       if (failure !== null) {
-        setSaveError(failure.message)
+        setSaveError(t(failureLocaleKey(failure.code)))
         return
       }
       await refresh()

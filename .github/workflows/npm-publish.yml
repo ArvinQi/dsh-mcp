@@ -22,6 +22,10 @@ jobs:
   publish-npm:
     needs: check
     runs-on: ubuntu-latest
+    # Job-level env so actions/setup-node writes the auth token into .npmrc
+    # and `npm publish` picks it up from the same environment.
+    env:
+      NODE_AUTH_TOKEN: ${{secrets.npm_token}}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -29,5 +33,3 @@ jobs:
           node-version: 20
           registry-url: https://registry.npmjs.org/
       - run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.npm_token}}

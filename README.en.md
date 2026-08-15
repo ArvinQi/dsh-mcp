@@ -18,6 +18,7 @@
 - **Fine-grained tool control**: expand each server to see its tools, all checked by default; uncheck to load only what you need
 - **Two injection modes**: `search` (on-demand, token-saving) and `full` (inject everything)
 - **Zero npm dependencies**: plugs into DeepSeek Harness internals, install and go
+- **OAuth authentication**: for `streamable-http` servers using MCP OAuth (authorization-code + PKCE), the browser opens automatically for authorization on connect; tokens are persisted and refreshed automatically by the SDK (auto-renewed while active within 24h)
 - **Three install paths**: npm / GitHub git source / local link; bilingual UI and docs
 
 Migrated and merged from uncommitted MCP work in the `deepseek-harness` repository:

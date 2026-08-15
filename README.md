@@ -20,6 +20,7 @@
 - **工具级精细控制**：每个服务器展开工具列表，默认全选，可取消勾选只加载需要的部分
 - **双注入模式**：`search`（按需检索，省 token）与 `full`（全量注入）
 - **零 npm 依赖**：直接对接 DeepSeek Harness 内部能力，安装即用
+- **OAuth 认证支持**：`streamable-http` 服务器若走 MCP OAuth（授权码 + PKCE），连接时自动打开浏览器授权；token 持久化、由 SDK 自动刷新（24 小时内活跃自动续期）
 - **三种安装方式**：npm / GitHub git 源 / 本地 link；中英文界面与文档
 
 ## 功能

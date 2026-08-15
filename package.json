@@ -2,7 +2,6 @@
   "name": "dsh-mcp",
   "version": "0.1.0",
   "description": "MCP server 管理插件（独立版）：托管 MCP 服务器注册表（持久化定义、运行时挂载、环境变量注入、连接探测）+ Web 设置管理页。由 deepseek-harness 仓库内的 mcp-manager / ui-settings-mcp / web-mcp 迁移合并而来。MCP server registry with WebUI management for DeepSeek Harness.",
-  "private": true,
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -10,10 +9,26 @@
     "./client": "./lib/client.js",
     "./package.json": "./package.json"
   },
+  "files": [
+    "lib",
+    "src",
+    "scripts",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "node scripts/build.mjs"
   },
+  "author": "Arvin.qi <arvin.qi@qq.com>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ArvinQi/dsh-mcp.git"
+  },
+  "homepage": "https://github.com/ArvinQi/dsh-mcp",
+  "bugs": {
+    "url": "https://github.com/ArvinQi/dsh-mcp/issues"
+  },
   "dsh": {
     "client": {
       "inject": [

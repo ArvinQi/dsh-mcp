@@ -5,9 +5,9 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [0.1.0] - 2026-08-15
+## [1.0.0] - 2026-08-15
 
-首个公开版本。
+首个正式版本。
 
 ### 新增
 
@@ -25,16 +25,3 @@
   - 每服务器展开工具列表，默认全选，可取消勾选指定加载部分工具，立即生效
 - **Remote 自挂载**：client 半部在 `apply()` 内自行 `ctx.remote.$mount()` 挂载 `mcpManager` 命名空间，无需任何 in-box 包改动
 - 零 npm 运行时依赖（`@deepseek-ai/*` 从 DSH profiles 模块解析）
-
-### 修复
-
-- **client 打包 JSX 崩溃**：esbuild 构建显式 `jsx: 'automatic'`，修复 `ReferenceError: React is not defined` 导致的设置页空白
-- **Remote 命名空间访问**：`mcpManager` 通过 `ctx.get('remote.mcpManager')` 读取，修复 `cannot get property ... without inject`（self-mount 插件不能 inject 自身命名空间）
-- **工具列表加载**：`toolsList` 按 0 参数契约调用，修复展开列表为空
-
-### 工程
-
-- 开源到 GitHub（`github.com/ArvinQi/dsh-mcp`），MIT License
-- 支持三种安装方式：npm（发布后）、GitHub git 源、本地 link
-- GitHub Actions 流水线：创建 Release 时自动发布到 npm（`registry.npmjs.org`）
-- 构建产物 `lib/client.js` 随仓库分发，安装开箱即用

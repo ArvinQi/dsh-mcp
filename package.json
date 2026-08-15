@@ -14,6 +14,8 @@
     "src",
     "scripts",
     "README.md",
+    "README.en.md",
+    "README.zh.md",
     "CHANGELOG.md",
     "LICENSE"
   ],

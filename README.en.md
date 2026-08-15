@@ -72,15 +72,17 @@ node scripts/build.mjs
 - CSS Modules are handled by an esbuild onLoad plugin: styles are injected into a
   `<style data-plugin="dsh-mcp" data-file="…">` tag, and the module default-exports an identity class-name map.
 
-## Install
+## Install & Usage
 
-### Option 1: npm (after publishing)
+### 1. Install
+
+**Option 1: npm (after publishing)**
 
 ```sh
 dsh plugin --profile web add dsh-mcp
 ```
 
-### Option 2: GitHub git source
+**Option 2: GitHub git source**
 
 ```sh
 dsh plugin --profile web add github:ArvinQi/dsh-mcp
@@ -88,7 +90,7 @@ dsh plugin --profile web add github:ArvinQi/dsh-mcp
 dsh plugin --profile web add git+https://github.com/ArvinQi/dsh-mcp.git
 ```
 
-### Option 3: local development (link)
+**Option 3: local development (link)**
 
 ```sh
 dsh plugin --profile web add link:<absolute path to this repo>
@@ -98,7 +100,7 @@ dsh plugin --profile web add link:<absolute path to this repo>
 > symlink (development-only, not committed); otherwise the linked symlink is realpath-resolved and `@deepseek-ai/*`
 > cannot be resolved.
 
-### Registration (all install options)
+### 2. Registration (all install options)
 
 Append to `$DSH_HOME/profiles/web/cordis.patch.yml` (`$DSH_HOME` defaults to `~/.dsh`):
 
@@ -110,6 +112,38 @@ Append to `$DSH_HOME/profiles/web/cordis.patch.yml` (`$DSH_HOME` defaults to `~/
 
 Then **restart `dsh web`** (client roster changes require a restart); afterwards hard-refresh the browser
 (`Cmd/Ctrl + Shift + R`) to load the settings page.
+
+### 3. Usage
+
+**Open the management page**: after restart, open DSH Web → **Settings → MCP**.
+
+**Add a server**:
+
+1. Click **Add server**.
+2. Fill in: server name (`serverName`, determines the tool prefix `mcp__<serverName>__`), transport
+   (`streamable-http` → URL / `stdio` → command), headers, tool-call timeout, etc.
+3. Click **Test connection** to verify connectivity and the tool list, then **Save**.
+
+**Day-to-day management**:
+
+- **Enable / disable**: row button; disabling a server unregisters all of its tools immediately.
+- **Refresh**: re-pulls server status and the tool list (syncs new tools after a server restart).
+- **Test connection**: available in the edit form at any time.
+
+**Tool control (the key to saving tokens)**:
+
+- **Injection mode**: switch at the top of the page between `search` (on-demand, default) and `full` (inject everything).
+  - In `search` mode, the model calls `mcp_tool_search` to discover and hot-inject the MCP tools it needs.
+- **Tool toggles**: click **Expand tools** to see all tools of that server (all checked by default);
+  unchecking a tool keeps it out of injection, applied immediately without saving.
+
+**Verifying the effect**:
+
+- In any agent session, available tools include `mcp__<serverName>__<tool>`.
+- In `search` mode, tools not retrieved stay out of the system prompt, saving tokens and improving
+  prompt-cache hit rate.
+- When tool content is unchanged, `list_changed` notifications no longer dispose and re-register
+  same-named tools, keeping the tool list stable.
 
 ## Versioning notes
 

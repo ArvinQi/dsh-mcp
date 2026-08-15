@@ -60,15 +60,17 @@ node scripts/build.mjs
 - CSS Modules 由 esbuild onLoad 插件处理：样式注入
   `<style data-plugin="dsh-mcp" data-file="…">`，默认导出 identity 类名映射。
 
-## 安装
+## 安装使用
 
-### 方式一：npm（发布到 npm 后）
+### 1. 安装
+
+**方式一：npm（发布到 npm 后）**
 
 ```sh
 dsh plugin --profile web add dsh-mcp
 ```
 
-### 方式二：GitHub git 源
+**方式二：GitHub git 源**
 
 ```sh
 dsh plugin --profile web add github:ArvinQi/dsh-mcp
@@ -76,7 +78,7 @@ dsh plugin --profile web add github:ArvinQi/dsh-mcp
 dsh plugin --profile web add git+https://github.com/ArvinQi/dsh-mcp.git
 ```
 
-### 方式三：本地开发（link）
+**方式三：本地开发（link）**
 
 ```sh
 dsh plugin --profile web add link:<本仓库绝对路径>
@@ -86,7 +88,7 @@ dsh plugin --profile web add link:<本仓库绝对路径>
 > symlink（本机开发用，不入库），否则 `link:` 安装的 symlink 被 realpath 后无法解析
 > `@deepseek-ai/*`。
 
-### 注册与生效（三种方式通用）
+### 2. 注册与生效（三种方式通用）
 
 在 `$DSH_HOME/profiles/web/cordis.patch.yml`（`$DSH_HOME` 默认 `~/.dsh`）追加：
 
@@ -98,6 +100,36 @@ dsh plugin --profile web add link:<本仓库绝对路径>
 
 然后**重启 `dsh web`**（client roster 变更需重启）；之后浏览器硬刷新（`Cmd/Ctrl + Shift + R`）
 加载设置页。
+
+### 3. 使用
+
+**打开管理页**：重启后浏览器打开 DSH Web → **设置（Settings）→ MCP**。
+
+**添加服务器**：
+
+1. 点击「添加服务器」
+2. 填写：服务器名称（`serverName`，决定工具前缀 `mcp__<serverName>__`）、传输方式
+   （`streamable-http` 填 URL / `stdio` 填命令）、请求头、工具调用超时等
+3. 点「测试连接」确认连通性与工具列表，点「保存」
+
+**日常管理**：
+
+- **启用 / 禁用**：列表行按钮，禁用后该服务器所有工具即时注销，不再注入
+- **刷新**：重新拉取服务器状态与工具列表（服务器重启后可同步新工具）
+- **测试连接**：编辑页可随时测试
+
+**工具控制（省 token 的关键）**：
+
+- **注入模式**：页面顶部切换 `search`（按需检索，默认）或 `full`（全量注入）
+  - `search` 模式下，模型需要某 MCP 工具时调用 `mcp_tool_search` 检索并热注入当前对话
+- **工具勾选**：点「展开工具」查看该服务器全部工具（默认全选），取消勾选 = 不注入该工具，
+  即时生效，无需保存
+
+**验证效果**：
+
+- 在任意 agent 会话中，可用工具应包含 `mcp__<服务器名>__<工具名>`
+- `search` 模式下未检索到的工具不占系统提示词，节省 token 并提升 prompt cache 命中率
+- 工具内容未变化时，`list_changed` 通知不会反复注销/重注册同名工具，工具列表保持稳定
 
 ## 版本注意
 

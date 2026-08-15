@@ -39,9 +39,33 @@ node scripts/build.mjs
 
 ## 安装
 
-profile 依赖（本地开发）：`dsh-mcp: link:<本仓库绝对路径>`
+### 方式一：npm（发布到 npm 后）
 
-`$DSH_HOME/profiles/web/cordis.patch.yml`（`$DSH_HOME` 默认 `~/.dsh`）：
+```sh
+dsh plugin --profile web add dsh-mcp
+```
+
+### 方式二：GitHub git 源
+
+```sh
+dsh plugin --profile web add github:ArvinQi/dsh-mcp
+# 或
+dsh plugin --profile web add git+https://github.com/ArvinQi/dsh-mcp.git
+```
+
+### 方式三：本地开发（link）
+
+```sh
+dsh plugin --profile web add link:<本仓库绝对路径>
+```
+
+> 注意：本地 `link:` 安装时，插件目录内含 `node_modules -> $DSH_HOME/profiles/node_modules`
+> symlink（本机开发用，不入库），否则 `link:` 安装的 symlink 被 realpath 后无法解析
+> `@deepseek-ai/*`。
+
+### 注册与生效（三种方式通用）
+
+在 `$DSH_HOME/profiles/web/cordis.patch.yml`（`$DSH_HOME` 默认 `~/.dsh`）追加：
 
 ```yaml
 - insert:
@@ -49,8 +73,8 @@ profile 依赖（本地开发）：`dsh-mcp: link:<本仓库绝对路径>`
       name: dsh-mcp
 ```
 
-> 注意：插件目录内含 `node_modules -> $DSH_HOME/profiles/node_modules` symlink（本机开发用，
-> 已加入 .gitignore），否则 `link:` 安装的 symlink 被 realpath 后无法解析 `@deepseek-ai/*`。
+然后**重启 `dsh web`**（client roster 变更需重启）；之后浏览器硬刷新（`Cmd/Ctrl + Shift + R`）
+加载设置页。
 
 ## 版本注意
 

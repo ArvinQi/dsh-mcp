@@ -1,4 +1,4 @@
-# dsh-mcp — MCP server management plugin for DeepSeek Harness (standalone)
+# dsh-mcp — MCP management UI + tool search: stable tool list, cache hits, no context bloat
 
 [![dshfind](https://dshfind.com/api/badge/ArvinQi/dsh-mcp?lang=en)](https://dshfind.com/en/plugins/ArvinQi/dsh-mcp?ref=badge)
 

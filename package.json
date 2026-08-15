@@ -1,7 +1,7 @@
 {
   "name": "dsh-mcp",
   "version": "1.1.0",
-  "description": "MCP 服务器管理插件：可视化界面管理 MCP 服务器与工具（配置/启停/刷新/测试、工具级勾选），支持按需检索（tool search）热注入，省 token。DeepSeek Harness plugin: visual MCP server & tool management with on-demand tool search injection.",
+  "description": "MCP 管理界面 + tool search：可视化配置/启停/刷新 MCP 服务器与工具勾选，按需检索（tool search）热注入；工具列表稳定命中缓存、不撑爆上下文。DeepSeek Harness plugin: MCP management UI + tool search — stable tool list, cache-friendly, no context bloat.",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

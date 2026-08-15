@@ -1,4 +1,4 @@
-# dsh-mcp — MCP 服务器管理插件（独立版）
+# dsh-mcp — MCP 管理界面 + tool search：稳定工具列表、命中缓存、不撑爆上下文
 
 **[English](README.en.md) | 简体中文**
 

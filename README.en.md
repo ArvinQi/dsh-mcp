@@ -1,5 +1,8 @@
 # dsh-mcp — MCP server management plugin for DeepSeek Harness (standalone)
 
+[![dshfind](https://dshfind.com/api/badge/ArvinQi/dsh-mcp?lang=en)](https://dshfind.com/en/plugins/ArvinQi/dsh-mcp?ref=badge)
+[![dshfind](https://dshfind.com/api/card/ArvinQi/dsh-mcp?lang=en)](https://dshfind.com/en/plugins/ArvinQi/dsh-mcp?ref=badge)
+
 ![Settings preview](static/snapshot.en.webp)
 
 Migrated and merged from uncommitted MCP work in the `deepseek-harness` repository:

@@ -2,6 +2,9 @@
 
 **[English](README.en.md) | 简体中文**
 
+[![dshfind](https://dshfind.com/api/badge/ArvinQi/dsh-mcp?lang=zh)](https://dshfind.com/zh/plugins/ArvinQi/dsh-mcp?ref=badge)
+[![dshfind](https://dshfind.com/api/card/ArvinQi/dsh-mcp?lang=zh)](https://dshfind.com/zh/plugins/ArvinQi/dsh-mcp?ref=badge)
+
 ![设置页预览](static/snapshot.webp)
 
 ## 功能

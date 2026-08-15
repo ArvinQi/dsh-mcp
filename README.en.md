@@ -1,7 +1,6 @@
 # dsh-mcp — MCP server management plugin for DeepSeek Harness (standalone)
 
 [![dshfind](https://dshfind.com/api/badge/ArvinQi/dsh-mcp?lang=en)](https://dshfind.com/en/plugins/ArvinQi/dsh-mcp?ref=badge)
-[![dshfind](https://dshfind.com/api/card/ArvinQi/dsh-mcp?lang=en)](https://dshfind.com/en/plugins/ArvinQi/dsh-mcp?ref=badge)
 
 ![Settings preview](static/snapshot.en.webp)
 
@@ -107,3 +106,5 @@ Then **restart `dsh web`** (client roster changes require a restart); afterwards
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md). Released under the [MIT License](LICENSE).
+
+[![dshfind](https://dshfind.com/api/card/ArvinQi/dsh-mcp?lang=en)](https://dshfind.com/en/plugins/ArvinQi/dsh-mcp?ref=badge)

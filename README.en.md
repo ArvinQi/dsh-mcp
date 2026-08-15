@@ -4,6 +4,22 @@
 
 ![Settings preview](static/snapshot.en.webp)
 
+## Why dsh-mcp?
+
+**Problems it solves:**
+
+- **Full tool injection burns tokens**: with multiple MCP servers, the tool count can reach hundreds, and injecting all of them every request is expensive. The `search` mode lets the model hot-inject only the tools it needs via `mcp_tool_search`, saving tokens at scale.
+- **Re-syncs churn the tool list and break caches**: `tools/list_changed` notifications dispose and re-register same-named tools, jittering the system-prompt tool list and constantly invalidating the prompt cache. Tool-list stabilization keeps unchanged tools registered, maximizing cache hits.
+- **No visual management entry**: server config, enable/disable, and tool toggles used to require editing files by hand. Settings → MCP brings everything into one UI.
+
+**Highlights:**
+
+- **Visual management**: server list / create / edit / delete / test connection / enable-disable / refresh, all in the UI
+- **Fine-grained tool control**: expand each server to see its tools, all checked by default; uncheck to load only what you need
+- **Two injection modes**: `search` (on-demand, token-saving) and `full` (inject everything)
+- **Zero npm dependencies**: plugs into DeepSeek Harness internals, install and go
+- **Three install paths**: npm / GitHub git source / local link; bilingual UI and docs
+
 Migrated and merged from uncommitted MCP work in the `deepseek-harness` repository:
 
 | Original package | Migrated to |

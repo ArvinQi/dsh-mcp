@@ -17,6 +17,8 @@
     "README.en.md",
     "README.zh.md",
     "CHANGELOG.md",
+    "CHANGELOG.en.md",
+    "CHANGELOG.zh.md",
     "LICENSE"
   ],
   "scripts": {

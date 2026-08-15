@@ -1,16 +1,16 @@
 import { useState, type ReactNode } from 'react'
-import type { McpServerId, McpServerView } from './types.ts'
+import type { McpManagerFailure, McpServerId, McpServerView } from './types.ts'
 import type {
   McpDraft, McpEnvRowDraft, McpTestOutcome,
 } from './mcp-store.ts'
-import { createEnvRowDraft, failureLocaleKey } from './mcp-store.ts'
+import { createEnvRowDraft } from './mcp-store.ts'
 import type { McpSettingsLocaleKey } from './locales.ts'
 import css from './ServerForm.module.css'
 
 /** The Remote verbs the editor needs; structurally the section's inject face. */
 export interface McpServerFormRemote {
-  save: (draft: McpDraft) => Promise<{ message: string } | null>
-  remove: (id: McpServerId) => Promise<{ message: string } | null>
+  save: (draft: McpDraft) => Promise<McpManagerFailure | null>
+  remove: (id: McpServerId) => Promise<McpManagerFailure | null>
   test: (draft: McpDraft) => Promise<McpTestOutcome>
   list: () => Promise<readonly McpServerView[]>
 }
@@ -60,13 +60,18 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
     update({ env: [...draft.env, createEnvRowDraft()] })
   }
 
+  const errorText = (error: unknown): string =>
+    error instanceof Error ? error.message : String(error)
+
   const runTest = async (): Promise<void> => {
     setSaveError(null)
     actions.setTestRunning(true)
     try {
       actions.setTest(await injected.test(draft))
-    } catch {
+    } catch (error) {
+      console.error('[dsh-mcp] test failed:', error)
       actions.setTest(null)
+      setSaveError(errorText(error))
     } finally {
       actions.setTestRunning(false)
     }
@@ -78,14 +83,15 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
     try {
       const failure = await injected.save(draft)
       if (failure !== null) {
-        setSaveError(t(failureLocaleKey(failure.code)))
+        setSaveError(`${failure.code}: ${failure.message}`)
         return
       }
-      await refresh()
+      if (!await refresh()) return
       actions.cancelEdit()
       onSaved?.()
-    } catch {
-      setSaveError(t('failureTitle'))
+    } catch (error) {
+      console.error('[dsh-mcp] save failed:', error)
+      setSaveError(errorText(error))
     } finally {
       actions.setBusy(null)
     }
@@ -98,24 +104,27 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
     try {
       const failure = await injected.remove(draft.id)
       if (failure !== null) {
-        setSaveError(failure.message)
+        setSaveError(`${failure.code}: ${failure.message}`)
         return
       }
-      await refresh()
+      if (!await refresh()) return
       actions.cancelEdit()
-    } catch {
-      setSaveError(t('failureTitle'))
+    } catch (error) {
+      console.error('[dsh-mcp] remove failed:', error)
+      setSaveError(errorText(error))
     } finally {
       actions.setBusy(null)
     }
   }
 
-  const refresh = async (): Promise<void> => {
+  const refresh = async (): Promise<boolean> => {
     try {
       actions.setServers(await injected.list())
-    } catch {
-      // The save/remove outcome is the actionable one; a failed refresh is
-      // re-run on the next page visit.
+      return true
+    } catch (error) {
+      console.error('[dsh-mcp] refresh failed:', error)
+      setSaveError(errorText(error))
+      return false
     }
   }
 

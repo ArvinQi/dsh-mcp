@@ -1,7 +1,7 @@
 {
   "name": "dsh-mcp",
   "version": "1.0.0",
-  "description": "MCP server 管理插件（独立版）：托管 MCP 服务器注册表（持久化定义、运行时挂载、环境变量注入、连接探测）+ Web 设置管理页。由 deepseek-harness 仓库内的 mcp-manager / ui-settings-mcp / web-mcp 迁移合并而来。MCP server registry with WebUI management for DeepSeek Harness.",
+  "description": "MCP 服务器管理插件：可视化界面管理 MCP 服务器与工具（配置/启停/刷新/测试、工具级勾选），支持按需检索（tool search）热注入，省 token。DeepSeek Harness plugin: visual MCP server & tool management with on-demand tool search injection.",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Header env substitution**: `streamable-http` header values support `${ENV}` placeholders, resolved at connect time from the server's configured env (including secrets from the credentials document) or the process environment (e.g. `Authorization: Bearer ${TOKEN}`); unmatched placeholders stay literal so a missing variable never silently empties a header
+- **Env config for HTTP servers**: streamable-http servers now also get an environment-variable section (previously stdio-only) as the substitution source for headers; the JSON config editor already supports it
 - **JSON editor for the whole MCP server list**: a new "JSON config editor" panel on Settings → MCP views and edits every server definition as one JSON array (serverName / transport / enabled / url / command / args / cwd / headers / timeout / failOnStartupError / env); applying replaces the whole list — listed servers are created or updated, existing servers absent from the document are removed (new host `upsertJson` batch method; Apply saves directly), and the server list and tool list refresh automatically afterwards
 - The server list (`list`) now returns non-secret env values with each server so they round-trip through the JSON editor; secret values still live only in the credentials document (exported as a `configured` flag; a blank value keeps the stored one)
 

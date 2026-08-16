@@ -220,10 +220,9 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
         </>
       )}
 
-      {stdio ? (
-        <fieldset className={css.envBlock}>
-          <legend>{t('envVars')}</legend>
-          <p className={css.hint}>{t('envHint')}</p>
+      <fieldset className={css.envBlock}>
+        <legend>{t('envVars')}</legend>
+        <p className={css.hint}>{t('envHint')}</p>
           {draft.env.length === 0 ? <p className={css.muted}>{t('envVars')}: 0</p> : null}
           {draft.env.map(row => (
             <div key={row.key} className={css.envRow}>
@@ -259,7 +258,6 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
           ))}
           <button type="button" onClick={addEnvRow}>{t('addEnvVar')}</button>
         </fieldset>
-      ) : null}
 
       <label className={css.field}>
         <span>{t('toolCallTimeoutMs')}</span>

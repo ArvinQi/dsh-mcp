@@ -11,6 +11,8 @@
 
 ### 新增
 
+- **请求头环境变量替换**：`streamable-http` 服务器的请求头 value 支持 `${ENV}` 占位符，连接时按该服务器配置的环境变量（含 secret，从凭据文档解析）或进程环境变量替换（如 `Authorization: Bearer ${TOKEN}`）；未匹配的占位符原样保留，避免误清空
+- **HTTP 服务器环境变量配置**：streamable-http 服务器现在同样提供环境变量配置区（此前仅 stdio），作为请求头替换的来源；JSON 配置编辑器已天然支持
 - **JSON 维护服务器配置列表**：Settings → MCP 页新增「JSON 维护配置」面板，以纯 JSON 数组查看/编辑**全部 MCP 服务器配置**（serverName / transport / enabled / url / command / args / cwd / headers / 超时 / failOnStartupError / env）；应用时按列表全量替换——已列出的服务器创建或更新、未列出的删除（host 新增 `upsertJson` 批量方法，点应用直接保存），保存后自动刷新服务器列表与工具列表
 - 服务器列表导出（`list`）中的非 secret 环境变量值随配置返回，可随 JSON 往返编辑；secret 值仍只存凭据文档（导出仅 `configured` 标记，留空保留原值）
 

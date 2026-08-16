@@ -6,20 +6,8 @@
  */
 import { defineStore, type EngineStoreHandle } from '@deepseek-ai/dsh-client-runtime/client'
 import type {
-  McpEnvVarInput, McpProbeView, McpServerId, McpServerInput, McpServerView, McpTransportKind,
+  McpProbeView, McpServerId, McpServerInput, McpServerView, McpTransportKind,
 } from './types.ts'
-
-/** One env row in the editor. */
-export interface McpEnvRowDraft {
-  /** Stable row key for React lists. */
-  readonly key: string
-  readonly name: string
-  readonly secret: boolean
-  /** Editor text; a blank secret value keeps the stored one on save. */
-  readonly value: string
-  /** Whether a stored value exists (secret rows render write-only). */
-  readonly configured: boolean
-}
 
 /** One server being edited. */
 export interface McpDraft {
@@ -35,7 +23,6 @@ export interface McpDraft {
   readonly url: string
   /** Headers as "Name: value" lines. */
   readonly headersText: string
-  readonly env: readonly McpEnvRowDraft[]
   /** Timeout as editor text; blank falls back to the default. */
   readonly toolCallTimeoutMs: string
   readonly failOnStartupError: boolean
@@ -75,19 +62,6 @@ type McpManagerActions = {
 /** Default tool-call timeout when the editor leaves it blank (ms). */
 export const DEFAULT_TOOL_CALL_TIMEOUT_MS = 60_000
 
-let envRowSeq = 0
-
-/** A fresh env row key for React identity. */
-function nextEnvRowKey(): string {
-  envRowSeq += 1
-  return `env-${envRowSeq}`
-}
-
-/** A fresh empty env row for the editor. */
-export function createEnvRowDraft(): McpEnvRowDraft {
-  return { key: nextEnvRowKey(), name: '', secret: false, value: '', configured: false }
-}
-
 /** Build an empty create draft. */
 export function emptyDraft(): McpDraft {
   return {
@@ -100,7 +74,6 @@ export function emptyDraft(): McpDraft {
     cwd: '',
     url: '',
     headersText: '',
-    env: [],
     toolCallTimeoutMs: String(DEFAULT_TOOL_CALL_TIMEOUT_MS),
     // Reject the mount by default when the startup connection fails, so a
     // broken server never registers stale tools.
@@ -120,13 +93,6 @@ export function draftFromServer(server: McpServerView): McpDraft {
     cwd: server.cwd,
     url: server.url,
     headersText: server.headers.map(header => `${header.name}: ${header.value}`).join('\n'),
-    env: server.env.map(entry => ({
-      key: nextEnvRowKey(),
-      name: entry.name,
-      secret: entry.secret,
-      value: '',
-      configured: entry.configured,
-    })),
     toolCallTimeoutMs: String(server.toolCallTimeoutMs),
     failOnStartupError: server.failOnStartupError,
   }
@@ -159,12 +125,12 @@ function parseTimeout(text: string): number {
 /** The Remote submission derived from the current draft. */
 export interface McpSubmission {
   readonly server: McpServerInput
-  readonly env: readonly McpEnvVarInput[]
 }
 
 /**
- * Convert the editing draft into the Remote upsert/test payload. A blank
- * secret value submits no value, which keeps the stored secret on upsert.
+ * Convert the editing draft into the Remote upsert/test payload. The form no
+ * longer edits env rows (process-level env vars are managed separately), so
+ * no env is submitted and the host keeps the stored env untouched.
  */
 export function draftToSubmission(draft: McpDraft): McpSubmission {
   return {
@@ -180,11 +146,6 @@ export function draftToSubmission(draft: McpDraft): McpSubmission {
       toolCallTimeoutMs: parseTimeout(draft.toolCallTimeoutMs),
       failOnStartupError: draft.failOnStartupError,
     },
-    env: draft.env.map(row => ({
-      name: row.name.trim(),
-      secret: row.secret,
-      ...row.secret && row.value.trim().length === 0 ? {} : { value: row.value },
-    })),
   }
 }
 

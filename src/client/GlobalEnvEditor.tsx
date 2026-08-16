@@ -54,6 +54,8 @@ export function GlobalEnvEditor({ injected, t, onApplied }: GlobalEnvEditorProps
   const [busy, setBusy] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const [loadFailed, setLoadFailed] = useState(false)
+  const [bulkOpen, setBulkOpen] = useState(false)
+  const [bulkText, setBulkText] = useState('')
   const seqRef = useRef(0)
 
   const reload = (): void => {
@@ -97,11 +99,12 @@ export function GlobalEnvEditor({ injected, t, onApplied }: GlobalEnvEditorProps
   }
 
   /** Parse "NAME=value" lines (one per line) into fresh draft rows. */
-  const addMany = (): void => {
-    const text = window.prompt(t('globalEnvBulkPrompt'), '')
-    if (text === null) return
-    const parsed = text.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0)
-    if (parsed.length === 0) return
+  const applyBulk = (): void => {
+    const parsed = bulkText.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0)
+    if (parsed.length === 0) {
+      setBulkOpen(false)
+      return
+    }
     const next: EnvRowDraft[] = []
     for (const line of parsed) {
       const eq = line.indexOf('=')
@@ -115,6 +118,8 @@ export function GlobalEnvEditor({ injected, t, onApplied }: GlobalEnvEditorProps
       next.push({ key: nextKey(), name, secret: false, value, configured: false })
     }
     if (next.length > 0) setRows(prev => [...prev, ...next])
+    setBulkOpen(false)
+    setBulkText('')
   }
 
   const save = (): void => {
@@ -209,11 +214,32 @@ export function GlobalEnvEditor({ injected, t, onApplied }: GlobalEnvEditorProps
       {notice !== null ? <p className={css.notice} role="status">{notice}</p> : null}
       <div className={css.actions}>
         <button type="button" disabled={busy} onClick={add}>{t('globalEnvAdd')}</button>
-        <button type="button" disabled={busy} onClick={addMany}>{t('globalEnvBulk')}</button>
+        <button type="button" disabled={busy} onClick={() => setBulkOpen(true)}>{t('globalEnvBulk')}</button>
         <button type="button" className={css.primary} disabled={busy} onClick={save}>
           {busy ? t('globalEnvSaving') : t('globalEnvSave')}
         </button>
       </div>
+
+      {bulkOpen ? (
+        <div className={css.overlay} onClick={() => setBulkOpen(false)}>
+          <div className={css.dialog} role="dialog" aria-label={t('globalEnvBulk')} onClick={(event) => event.stopPropagation()}>
+            <p className={css.dialogTitle}>{t('globalEnvBulk')}</p>
+            <p className={css.hint}>{t('globalEnvBulkPrompt')}</p>
+            <textarea
+              className={css.bulkText}
+              rows={8}
+              autoFocus
+              spellCheck={false}
+              value={bulkText}
+              onChange={(event) => setBulkText(event.currentTarget.value)}
+            />
+            <div className={css.actions}>
+              <button type="button" onClick={() => setBulkOpen(false)}>{t('cancel')}</button>
+              <button type="button" className={css.primary} onClick={applyBulk}>{t('globalEnvBulkOk')}</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

@@ -62,13 +62,6 @@ function viewToDraft(server: McpServerView): McpDraft {
     cwd: server.cwd,
     url: server.url,
     headersText: server.headers.map(header => `${header.name}: ${header.value}`).join('\n'),
-    env: server.env.map((entry, index) => ({
-      key: `view-${index}`,
-      name: entry.name,
-      secret: entry.secret,
-      value: '',
-      configured: entry.configured,
-    })),
     toolCallTimeoutMs: String(server.toolCallTimeoutMs),
     failOnStartupError: server.failOnStartupError,
   }
@@ -93,6 +86,7 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
   const [jsonOpen, setJsonOpen] = useState(false)
   const [envOpen, setEnvOpen] = useState(true)
   const timersRef = useRef<number[]>([])
+  let inlineForm: ReactNode | null = null
 
   useEffect(() => () => {
     for (const id of timersRef.current) window.clearTimeout(id)
@@ -245,7 +239,7 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
       setTest,
       setServers,
     }
-    return (
+    const form = (
       <McpServerForm
         draft={state.draft}
         busy={state.busy}
@@ -264,6 +258,7 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
         }}
       />
     )
+    inlineForm = form
   }
 
   return (
@@ -337,14 +332,17 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
             t={t}
             onApplied={() => {
               // The whole list changed on the Host: refresh the server rows and
-              // the tool list so the UI reflects the applied JSON.
+              // the tool list, then close the JSON panel to show the UI list.
               refreshServer('')
               refreshTools()
+              setJsonOpen(false)
             }}
           />
         ) : null}
 
-        {state.servers.length === 0 ? (
+        {inlineForm}
+
+        {jsonOpen ? null : state.servers.length === 0 ? (
           <p className={css.status}>{t('empty')}</p>
         ) : (
         <ul className={css.list}>

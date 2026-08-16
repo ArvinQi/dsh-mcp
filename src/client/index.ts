@@ -49,7 +49,7 @@ interface McpManagerRemote {
 
 export type { McpSettingsSectionProps, McpManagerInjected } from './McpSettingsSection.tsx'
 export type { McpServerFormProps } from './ServerForm.tsx'
-export type { McpDraft, McpEnvRowDraft, McpTestOutcome } from './mcp-store.ts'
+export type { McpDraft, McpTestOutcome } from './mcp-store.ts'
 export type { McpSettingsLocaleKey } from './locales.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -121,7 +121,6 @@ export async function apply(ctx: ClientContext): Promise<void> {
       const result = await manager.upsert({
         ...draft.id === null ? {} : { id: draft.id },
         server: submission.server,
-        env: submission.env,
       })
       if (result.ok) return null
       return failureOf(result.error)
@@ -140,7 +139,6 @@ export async function apply(ctx: ClientContext): Promise<void> {
       const result = await unwrap(() => manager.test({
         ...draft.id === null ? {} : { id: draft.id },
         server: submission.server,
-        env: submission.env,
       }))
       return { probe: result.probe, elapsedMs: result.elapsedMs }
     },

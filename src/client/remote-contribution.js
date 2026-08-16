@@ -64,7 +64,7 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_test_parameter_0$schema = z.object
   'name': z.string().readonly(),
   'secret': z.boolean().readonly(),
   'value': z.string().readonly().optional(),
-})).readonly(),
+})).readonly().optional(),
 })
 const _deepseek_ai_dsh_mcp_manager_mcpManager_test_result$schema = z.object({
   'ok': z.literal(true).readonly(),
@@ -101,7 +101,7 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_upsert_parameter_0$schema = z.obje
   'name': z.string().readonly(),
   'secret': z.boolean().readonly(),
   'value': z.string().readonly().optional(),
-})).readonly(),
+})).readonly().optional(),
 })
 const _deepseek_ai_dsh_mcp_manager_mcpManager_upsert_result$schema = z.union([z.object({
   'ok': z.literal(true).readonly(),

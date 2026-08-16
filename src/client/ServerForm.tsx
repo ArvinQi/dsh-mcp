@@ -1,9 +1,8 @@
 import { useState, type ReactNode } from 'react'
 import type { McpManagerFailure, McpServerId, McpServerView } from './types.ts'
 import type {
-  McpDraft, McpEnvRowDraft, McpTestOutcome,
+  McpDraft, McpTestOutcome,
 } from './mcp-store.ts'
-import { createEnvRowDraft } from './mcp-store.ts'
 import type { McpSettingsLocaleKey } from './locales.ts'
 import css from './ServerForm.module.css'
 
@@ -46,18 +45,6 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
   const update = (patch: Partial<McpDraft>): void => {
     setSaveError(null)
     actions.updateDraft(patch)
-  }
-
-  const updateEnvRow = (key: string, patch: Partial<McpEnvRowDraft>): void => {
-    update({ env: draft.env.map(row => row.key === key ? { ...row, ...patch } : row) })
-  }
-
-  const removeEnvRow = (key: string): void => {
-    update({ env: draft.env.filter(row => row.key !== key) })
-  }
-
-  const addEnvRow = (): void => {
-    update({ env: [...draft.env, createEnvRowDraft()] })
   }
 
   const errorText = (error: unknown): string =>
@@ -219,45 +206,6 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
           </label>
         </>
       )}
-
-      <fieldset className={css.envBlock}>
-        <legend>{t('envVars')}</legend>
-        <p className={css.hint}>{t('envHint')}</p>
-          {draft.env.length === 0 ? <p className={css.muted}>{t('envVars')}: 0</p> : null}
-          {draft.env.map(row => (
-            <div key={row.key} className={css.envRow}>
-              <input
-                type="text"
-                className={css.envName}
-                value={row.name}
-                placeholder={t('envName')}
-                aria-label={t('envName')}
-                onChange={(event) => updateEnvRow(row.key, { name: event.currentTarget.value })}
-              />
-              <input
-                type={row.secret ? 'password' : 'text'}
-                className={css.envValue}
-                value={row.value}
-                placeholder={row.secret && row.configured ? '••••••••' : t('envValue')}
-                aria-label={t('envValue')}
-                onChange={(event) => updateEnvRow(row.key, { value: event.currentTarget.value })}
-              />
-              <label className={css.secretToggle}>
-                <input
-                  type="checkbox"
-                  checked={row.secret}
-                  title={t('envSecretHint')}
-                  onChange={(event) => updateEnvRow(row.key, { secret: event.currentTarget.checked })}
-                />
-                {t('envSecret')}
-              </label>
-              <button type="button" className={css.danger} aria-label={t('removeEnvVar')} onClick={() => removeEnvRow(row.key)}>
-                ✕
-              </button>
-            </div>
-          ))}
-          <button type="button" onClick={addEnvRow}>{t('addEnvVar')}</button>
-        </fieldset>
 
       <label className={css.field}>
         <span>{t('toolCallTimeoutMs')}</span>

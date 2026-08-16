@@ -120,6 +120,21 @@ button:disabled {
   gap: 8px;
 }
 
+.inlineForm {
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: var(--dsw-alias-bg-layer-2);
+}
+
+.inlineFormItem {
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: var(--dsw-alias-bg-layer-2);
+  list-style: none;
+}
+
 .list {
   display: flex;
   flex-direction: column;

@@ -340,17 +340,19 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
           />
         ) : null}
 
-        {inlineForm}
+        {state.draft !== null && state.draft.id === null ? (
+          <div className={css.inlineForm}>{inlineForm}</div>
+        ) : null}
 
         {jsonOpen ? null : state.servers.length === 0 ? (
           <p className={css.status}>{t('empty')}</p>
         ) : (
         <ul className={css.list}>
-          {state.servers.map(server => {
+          {state.servers.flatMap(server => {
             const isExpanded = expanded.has(server.serverName)
             const isRefreshing = refreshing.has(server.serverName)
             const serverToolList = serverTools(server.serverName)
-            return (
+            const card = (
               <li key={server.id} className={css.card}>
                 <div className={css.row}>
                   <div className={css.rowMain}>
@@ -402,6 +404,12 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
                 ) : null}
               </li>
             )
+            // Editing this server: expand the form right below its row so the
+            // user never has to scroll away to find it.
+            if (state.draft !== null && state.draft.id === server.id) {
+              return [card, <li key={`${server.id}-form`} className={css.inlineFormItem}>{inlineForm}</li>]
+            }
+            return [card]
           })}
         </ul>
       )}

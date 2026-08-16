@@ -183,7 +183,6 @@ export function ServersJsonEditor({ injected, t, onApplied }: ServersJsonEditorP
       setError(parsed.error)
       return
     }
-    if (!window.confirm(t('serversJsonConfirm'))) return
     const seq = ++seqRef.current
     setBusy(true)
     setError(null)

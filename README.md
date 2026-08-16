@@ -29,6 +29,9 @@
   `@deepseek-ai/dsh-mcp-client` 实例、环境变量注入（明文入定义、secret 走 credentials）、
   连接探测（test）。
 - **Web 设置管理页**（client）：Settings → MCP，列表/编辑/删除/测试服务器。
+- **OAuth 认证**（host，`lib/oauth.js`）：`streamable-http` 服务器遇 401 + OAuth 挑战时自动走
+  授权码 + PKCE 流程，打开浏览器授权、回环回调收码、token 持久化并按需自动刷新；
+  测试连接与挂载共用同一份 token。
 - **Remote 自挂载**：client 半部在 `apply()` 里自行 `ctx.remote.$mount()` 挂载 `mcpManager`
   命名空间（原实现依赖 api-remotes 的 in-box 修改，独立版不再需要任何 in-box 包改动）。
 
@@ -40,6 +43,7 @@ dsh-mcp/
 ├── lib/
 │   ├── index.js          host 半部（McpManagerService，源自 mcp-manager 构建产物）
 │   ├── mcp-client.js     vendored MCP 客户端（源自 @deepseek-ai/dsh-mcp-client，含工具列表稳定扩展）
+│   ├── oauth.js          MCP OAuth 客户端提供者（授权码 + PKCE、回环回调、token 持久化）
 │   ├── probe.js          vendored 连接探测（源自 mcp-client/src/probe.ts）
 │   ├── transport.js      vendored 传输工厂（源自 mcp-client/src/transport.ts）
 │   └── client.js         浏览器半部（esbuild 打包，ModuleLoader wire format）
@@ -112,6 +116,14 @@ dsh plugin --profile web add link:<本仓库绝对路径>
 2. 填写：服务器名称（`serverName`，决定工具前缀 `mcp__<serverName>__`）、传输方式
    （`streamable-http` 填 URL / `stdio` 填命令）、请求头、工具调用超时等
 3. 点「测试连接」确认连通性与工具列表，点「保存」
+
+**OAuth 服务器**（`streamable-http` 走 MCP OAuth，如受 OAuth 保护的网关服务）：
+
+- 只需正常填写 URL 并测试连接；服务器返回 401 + OAuth 挑战时，插件**自动打开浏览器**完成授权
+- 在浏览器中登录/同意后返回 DSH，测试结果自动刷新（「连接成功 + 工具数」）
+- token 持久化在凭据文档（按 `serverName` 隔离），由 MCP SDK 自动刷新（24 小时内活跃自动续期）；
+  授权一次后，挂载连接与后续测试连接复用同一份 token，无需重复授权
+- 首次授权需浏览器交互，测试/连接等待时间放宽至 5 分钟；非 OAuth 服务器不受影响，连接失败即时返回
 
 **日常管理**：
 

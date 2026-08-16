@@ -41,6 +41,10 @@ Migrated and merged from uncommitted MCP work in the `deepseek-harness` reposito
 - **Tool control**:
   - Injection mode: `search` (on-demand, default — the model hot-injects tools via `mcp_tool_search`) and `full` (inject every enabled tool each request).
   - Expandable per-server tool list, all checked by default; unchecking a tool keeps it out of injection. Changes take effect immediately.
+- **OAuth authentication** (host, `lib/oauth.js`): on a 401 + OAuth challenge from a `streamable-http`
+  server, runs the authorization-code + PKCE flow automatically — opens the browser, receives the
+  callback on a loopback server, persists tokens, and refreshes them on demand; test connection and
+  mounts share the same token.
 - **Remote self-mount**: the client half mounts the `mcpManager` Remote namespace itself via `ctx.remote.$mount()` in `apply()`,
   so no in-box package modification is required.
 - Zero npm runtime dependencies (`@deepseek-ai/*` resolve from the DSH profiles module fallback).
@@ -53,6 +57,7 @@ dsh-mcp/
 ├── lib/
 │   ├── index.js          host half (McpManagerService, built from mcp-manager)
 │   ├── mcp-client.js     vendored MCP client (from @deepseek-ai/dsh-mcp-client, with tool-list stability extension)
+│   ├── oauth.js          MCP OAuth client provider (authorization-code + PKCE, loopback callback, token persistence)
 │   ├── probe.js          vendored connection probe (from mcp-client/src/probe.ts)
 │   ├── transport.js      vendored transport factory (from mcp-client/src/transport.ts)
 │   └── client.js         browser half (esbuild bundle, ModuleLoader wire format)
@@ -124,6 +129,18 @@ Then **restart `dsh web`** (client roster changes require a restart); afterwards
 2. Fill in: server name (`serverName`, determines the tool prefix `mcp__<serverName>__`), transport
    (`streamable-http` → URL / `stdio` → command), headers, tool-call timeout, etc.
 3. Click **Test connection** to verify connectivity and the tool list, then **Save**.
+
+**OAuth servers** (`streamable-http` using MCP OAuth, e.g. OAuth-protected gateway services):
+
+- Just fill in the URL and test the connection; when the server responds with a 401 + OAuth challenge,
+  the plugin **opens the browser automatically** for authorization.
+- Log in / approve in the browser and return to DSH; the test result refreshes automatically
+  ("connection succeeded + tool count").
+- Tokens are persisted in the credentials document (scoped by `serverName`) and refreshed automatically
+  by the MCP SDK (auto-renewed while active within 24h); after authorizing once, mounts and later
+  test connections reuse the same token — no repeated authorization.
+- The first authorization needs browser interaction, so the test/connect wait budget is relaxed to
+  5 minutes; non-OAuth servers are unaffected and fail fast.
 
 **Day-to-day management**:
 

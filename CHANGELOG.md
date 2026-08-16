@@ -7,7 +7,7 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [Unreleased]
+## [1.2.0] - 2026-08-16
 
 ### 新增
 
@@ -18,6 +18,7 @@
 - OAuth token 凭据引用名与服务器名中的连字符冲突导致 `resolve` 校验失败（凭据引用名仅允许 `[A-Za-z_][A-Za-z0-9_]*`）：引用名改为清洗后的服务器名 + 稳定哈希，避免非法字符与命名碰撞
 - OAuth 交互授权探测预算从 90 秒提升到 5 分钟：首次授权需在浏览器完成登录/同意，慢于 90 秒会导致探测提前超时并误报连接失败（授权其实已成功、token 已保存），现授权完成后测试结果会自动展示
 - 禁用状态的服务器不再重复展示两个「未启用」徽标（badge 与补充文案叠加）
+- 设置页 primary 按钮（添加/保存）与「连接中」徽标使用了不存在的主题 token，导致文字颜色异常：改用 web shell 真实主题 token（`--dsw-alias-button-primary-fill` / `--dsw-alias-label-primary-foreground` / `--dsw-alias-brand-primary`）
 
 ### 优化
 

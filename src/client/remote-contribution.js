@@ -239,6 +239,37 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_toolsMode_result$schema = z.union(
   'message': z.string().readonly(),
 }).readonly(),
 })])
+const _deepseek_ai_dsh_mcp_manager_mcpManager_envList_result$schema = z.object({
+  'ok': z.literal(true).readonly(),
+  'vars': z.array(z.object({
+  'name': z.string().readonly(),
+  'secret': z.boolean().readonly(),
+  'configured': z.boolean().readonly(),
+  'value': z.string().readonly().optional(),
+})).readonly(),
+})
+const _deepseek_ai_dsh_mcp_manager_mcpManager_envSet_parameter_0$schema = z.object({
+  'vars': z.array(z.object({
+  'name': z.string().readonly(),
+  'secret': z.boolean().readonly().optional(),
+  'value': z.string().readonly().optional(),
+})).readonly(),
+})
+const _deepseek_ai_dsh_mcp_manager_mcpManager_envSet_result$schema = z.union([z.object({
+  'ok': z.literal(true).readonly(),
+  'vars': z.array(z.object({
+  'name': z.string().readonly(),
+  'secret': z.boolean().readonly(),
+  'configured': z.boolean().readonly(),
+  'value': z.string().readonly().optional(),
+})).readonly(),
+}), z.object({
+  'ok': z.literal(false).readonly(),
+  'error': z.object({
+  'code': z.union([z.literal("MCP_INVALID_SPEC")]).readonly(),
+  'message': z.string().readonly(),
+}).readonly(),
+})])
 
 export const TYPERT_REMOTE = {
   package: '@deepseek-ai/dsh-mcp-manager',
@@ -420,6 +451,46 @@ export const TYPERT_REMOTE = {
         mode: 'strict',
         typeSymbol: '@deepseek-ai/dsh-mcp-manager/types#McpManagerToolsModeResult',
         schema: _deepseek_ai_dsh_mcp_manager_mcpManager_toolsMode_result$schema,
+      },
+      sourceLocation: {"file":"lib/index.js"},
+    },
+    {
+      id: '@deepseek-ai/dsh-mcp-manager#mcpManager/envList',
+      service: 'mcpManager',
+      namespace: 'mcpManager',
+      method: 'envList',
+      invocation: { kind: 'direct' },
+      parameters: [
+      ],
+      result: {
+        mode: 'strict',
+        typeSymbol: '@deepseek-ai/dsh-mcp-manager/types#McpManagerEnvListResult',
+        schema: _deepseek_ai_dsh_mcp_manager_mcpManager_envList_result$schema,
+      },
+      sourceLocation: {"file":"lib/index.js"},
+    },
+    {
+      id: '@deepseek-ai/dsh-mcp-manager#mcpManager/envSet',
+      service: 'mcpManager',
+      namespace: 'mcpManager',
+      method: 'envSet',
+      invocation: { kind: 'direct' },
+      parameters: [
+        {
+          name: 'request',
+          wire: 'request',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: '@deepseek-ai/dsh-mcp-manager/types#McpManagerEnvSetRequest',
+            schema: _deepseek_ai_dsh_mcp_manager_mcpManager_envSet_parameter_0$schema,
+          },
+        },
+      ],
+      result: {
+        mode: 'strict',
+        typeSymbol: '@deepseek-ai/dsh-mcp-manager/types#McpManagerEnvSetResult',
+        schema: _deepseek_ai_dsh_mcp_manager_mcpManager_envSet_result$schema,
       },
       sourceLocation: {"file":"lib/index.js"},
     },

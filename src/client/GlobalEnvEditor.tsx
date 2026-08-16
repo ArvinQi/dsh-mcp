@@ -1,0 +1,181 @@
+/**
+ * Process-level environment-variable editor: a global key-value list shared
+ * by every MCP server's header substitution. Values are referenced from
+ * server headers as `${NAME}` or by bare name; secret values are stored in
+ * the credentials document and never shown back.
+ * @module dsh-mcp/client/GlobalEnvEditor
+ */
+
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import type { McpEnvVarView } from './types.ts'
+import type { McpSettingsLocaleKey } from './locales.ts'
+import css from './GlobalEnvEditor.module.css'
+
+/** One editable row in the editor. */
+interface EnvRowDraft {
+  readonly key: string
+  name: string
+  secret: boolean
+  value: string
+  configured: boolean
+}
+
+/** Host Remote face required by the editor. */
+export interface GlobalEnvRemote {
+  /** Read the process-level env rows. */
+  envList: () => Promise<{ vars: readonly McpEnvVarView[] }>
+  /** Replace the whole process-level env table. */
+  envSet: (vars: readonly { name: string; secret?: boolean; value?: string }[]) => Promise<{ vars: readonly McpEnvVarView[] }>
+}
+
+/** Props for the process env editor panel. */
+export interface GlobalEnvEditorProps {
+  readonly injected: GlobalEnvRemote
+  readonly t: (key: McpSettingsLocaleKey) => string
+  /** Called after a successful save; the parent refreshes the page. */
+  readonly onApplied: () => void
+}
+
+let rowSeq = 0
+function nextKey(): string {
+  rowSeq += 1
+  return `genv-${rowSeq}`
+}
+
+function emptyRow(): EnvRowDraft {
+  return { key: nextKey(), name: '', secret: false, value: '', configured: false }
+}
+
+/** Render the process-level environment-variable editor panel. */
+export function GlobalEnvEditor({ injected, t, onApplied }: GlobalEnvEditorProps): ReactNode {
+  const [rows, setRows] = useState<EnvRowDraft[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+  const seqRef = useRef(0)
+
+  useEffect(() => {
+    if (loaded) return
+    let current = true
+    void injected.envList().then(
+      (state) => {
+        if (!current) return
+        setRows(state.vars.map(row => ({
+          key: nextKey(),
+          name: row.name,
+          secret: row.secret,
+          value: '',
+          configured: row.configured,
+        })))
+        setLoaded(true)
+        setError(null)
+      },
+      () => { if (current) setError('无法读取环境变量') },
+    )
+    return () => { current = false }
+  }, [injected, loaded])
+
+  const update = (key: string, patch: Partial<EnvRowDraft>): void => {
+    setRows(prev => prev.map(row => row.key === key ? { ...row, ...patch } : row))
+  }
+  const remove = (key: string): void => {
+    setRows(prev => prev.filter(row => row.key !== key))
+  }
+  const add = (): void => {
+    setRows(prev => [...prev, emptyRow()])
+  }
+
+  const save = (): void => {
+    const vars: Array<{ name: string; secret?: boolean; value?: string }> = []
+    const seen = new Set<string>()
+    for (const row of rows) {
+      const name = row.name.trim()
+      if (name.length === 0) {
+        if (row.value.trim().length > 0) {
+          setError('存在未填写变量名的行')
+          return
+        }
+        continue // 空行跳过
+      }
+      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
+        setError(`变量名 "${name}" 必须是字母/数字/下划线，且以字母或下划线开头`)
+        return
+      }
+      if (seen.has(name)) {
+        setError(`变量名 "${name}" 重复`)
+        return
+      }
+      seen.add(name)
+      vars.push({
+        name,
+        secret: row.secret,
+        ...(row.secret ? {} : row.value.trim().length > 0 ? { value: row.value } : {}),
+      })
+    }
+    const seq = ++seqRef.current
+    setBusy(true)
+    setError(null)
+    setNotice(null)
+    void injected.envSet(vars).then(
+      () => {
+        if (seq !== seqRef.current) return
+        setNotice(t('globalEnvDone'))
+        onApplied()
+      },
+      (error: unknown) => {
+        if (seq !== seqRef.current) return
+        setError(error instanceof Error ? error.message : String(error))
+      },
+    ).finally(() => {
+      if (seq === seqRef.current) setBusy(false)
+    })
+  }
+
+  return (
+    <div className={css.panel}>
+      <p className={css.hint}>{t('globalEnvHint')}</p>
+      {rows.length === 0 ? <p className={css.muted}>{t('globalEnvEmpty')}</p> : null}
+      {rows.map(row => (
+        <div key={row.key} className={css.row}>
+          <input
+            type="text"
+            className={css.name}
+            value={row.name}
+            placeholder={t('globalEnvName')}
+            aria-label={t('globalEnvName')}
+            onChange={(event) => update(row.key, { name: event.currentTarget.value })}
+          />
+          <input
+            type={row.secret ? 'password' : 'text'}
+            className={css.value}
+            value={row.value}
+            placeholder={row.secret && row.configured ? '••••••••' : t('globalEnvValue')}
+            aria-label={t('globalEnvValue')}
+            onChange={(event) => update(row.key, { value: event.currentTarget.value })}
+          />
+          <label className={css.secretToggle}>
+            <input
+              type="checkbox"
+              checked={row.secret}
+              title={t('globalEnvSecretHint')}
+              onChange={(event) => update(row.key, { secret: event.currentTarget.checked })}
+            />
+            {t('globalEnvSecret')}
+          </label>
+          <button type="button" className={css.danger} aria-label={t('globalEnvRemove')} onClick={() => remove(row.key)}>
+            ✕
+          </button>
+        </div>
+      ))}
+      {error !== null ? <p className={css.error} role="alert">{error}</p> : null}
+      {notice !== null ? <p className={css.notice} role="status">{notice}</p> : null}
+      <div className={css.actions}>
+        <button type="button" disabled={busy} onClick={add}>{t('globalEnvAdd')}</button>
+        <button type="button" className={css.primary} disabled={busy} onClick={save}>
+          {busy ? t('globalEnvSaving') : t('globalEnvSave')}
+        </button>
+      </div>
+    </div>
+  )
+}

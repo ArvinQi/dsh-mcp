@@ -6,13 +6,14 @@ import type {
 import type { InjectFace, PropsLocale, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
 import { McpServerForm, type McpServerFormRemote } from './ServerForm.tsx'
 import { ServersJsonEditor, type ServersJsonEntry } from './ServersJsonEditor.tsx'
+import { GlobalEnvEditor, type GlobalEnvRemote } from './GlobalEnvEditor.tsx'
 import type { McpToolControlRemote } from './ToolControlSection.tsx'
 import type { McpSettingsLocaleKey } from './locales.ts'
 import { createMcpManagerStore, type McpDraft, type McpTestOutcome } from './mcp-store.ts'
 import css from './McpSettingsSection.module.css'
 
 /** Registration-side Remote face used by the section. */
-export interface McpManagerInjected extends McpServerFormRemote, McpToolControlRemote {
+export interface McpManagerInjected extends McpServerFormRemote, McpToolControlRemote, GlobalEnvRemote {
   /** Read the current server list. */
   list: () => Promise<readonly McpServerView[]>
   /** Persist one draft; null means success, a failure is otherwise returned. */
@@ -90,6 +91,7 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set())
   const [refreshing, setRefreshing] = useState<ReadonlySet<string>>(new Set())
   const [jsonOpen, setJsonOpen] = useState(false)
+  const [envOpen, setEnvOpen] = useState(false)
   const timersRef = useRef<number[]>([])
 
   useEffect(() => () => {
@@ -269,6 +271,14 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
       <div className={css.header}>
         <button
           type="button"
+          className={envOpen ? css.active : undefined}
+          aria-expanded={envOpen}
+          onClick={() => setEnvOpen(open => !open)}
+        >
+          {t('globalEnv')}
+        </button>
+        <button
+          type="button"
           className={jsonOpen ? css.active : undefined}
           aria-expanded={jsonOpen}
           onClick={() => setJsonOpen(open => !open)}
@@ -277,6 +287,18 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
         </button>
         <button type="button" className={css.primary} onClick={beginCreate}>{t('addServer')}</button>
       </div>
+
+      {envOpen ? (
+        <GlobalEnvEditor
+          injected={{ envList: props.envList, envSet: props.envSet }}
+          t={t}
+          onApplied={() => {
+            // New process env may feed header substitution: refresh server
+            // rows (connection attempts re-resolve env) but keep the tool list.
+            refreshServer('')
+          }}
+        />
+      ) : null}
 
       {jsonOpen ? (
         <ServersJsonEditor

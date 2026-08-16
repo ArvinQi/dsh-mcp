@@ -43,6 +43,8 @@ interface McpManagerRemote {
   toolsList(): Promise<McpRemoteResult<{ readonly tools: readonly unknown[]; readonly mode: unknown; readonly hotSize: number }>>
   toolsSet(request: { readonly name: string; readonly enabled: boolean }): Promise<McpRemoteResult<{ readonly ok: boolean }>>
   toolsMode(request: { readonly mode: unknown }): Promise<McpRemoteResult<{ readonly ok: boolean }>>
+  envList(): Promise<McpRemoteResult<{ readonly vars: readonly unknown[] }>>
+  envSet(request: { readonly vars: readonly unknown[] }): Promise<McpRemoteResult<{ readonly vars: readonly unknown[] }>>
 }
 
 export type { McpSettingsSectionProps, McpManagerInjected } from './McpSettingsSection.tsx'
@@ -155,6 +157,14 @@ export async function apply(ctx: ClientContext): Promise<void> {
     toolsMode: async (request) => {
       const result = await unwrap(() => manager.toolsMode({ mode: request.mode }))
       return { ok: result.ok }
+    },
+    envList: async () => {
+      const result = await unwrap(() => manager.envList())
+      return { vars: result.vars }
+    },
+    envSet: async (vars) => {
+      const result = await unwrap(() => manager.envSet({ vars }))
+      return { vars: result.vars }
     },
   })
 

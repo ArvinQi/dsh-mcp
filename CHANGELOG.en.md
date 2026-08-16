@@ -11,10 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Header env substitution**: `streamable-http` header values support `${ENV}` placeholders, resolved at connect time from the server's configured env (including secrets from the credentials document) or the process environment (e.g. `Authorization: Bearer ${TOKEN}`); unmatched placeholders stay literal so a missing variable never silently empties a header
+- **Process-level environment variables**: a new "Process env vars" section on Settings → MCP holds a global key-value list shared by every server; header values can reference a variable by `${NAME}` or by bare name and are substituted at connect time (resolution order: server env > process-level env > system environment); secret values are stored in the credentials document, a blank value keeps the stored one
+- **Header env substitution**: `streamable-http` header values support `${ENV}` placeholders and bare variable names, resolved at connect time from the server's configured env (including secrets from the credentials document), the process-level env table, or the process environment (e.g. `Authorization: Bearer ${TOKEN}`); unmatched placeholders stay literal so a missing variable never silently empties a header
 - **Env config for HTTP servers**: streamable-http servers now also get an environment-variable section (previously stdio-only) as the substitution source for headers; the JSON config editor already supports it
 - **JSON editor for the whole MCP server list**: a new "JSON config editor" panel on Settings → MCP views and edits every server definition as one JSON array (serverName / transport / enabled / url / command / args / cwd / headers / timeout / failOnStartupError / env); applying replaces the whole list — listed servers are created or updated, existing servers absent from the document are removed (new host `upsertJson` batch method; Apply saves directly), and the server list and tool list refresh automatically afterwards
 - The server list (`list`) now returns non-secret env values with each server so they round-trip through the JSON editor; secret values still live only in the credentials document (exported as a `configured` flag; a blank value keeps the stored one)
+
+### Fixed
+
+- **OAuth no longer re-authorizes after a token refresh fails** (after a JSON save / restart, OAuth servers failed to connect without opening the browser): the OAuth client (client_id) was never persisted — every process re-registered a fresh client, so token refresh was rejected by the server with `client_id mismatch`, and the SDK-required `invalidateCredentials` was missing so the stale token could not be cleared and the retry kept failing. Fixed by persisting the client info alongside the tokens (credentials document) and implementing `invalidateCredentials`, so an unrecoverable failure now starts a fresh browser authorization flow
 
 ## [1.3.0] - 2026-08-16
 

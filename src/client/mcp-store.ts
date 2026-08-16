@@ -188,17 +188,6 @@ export function draftToSubmission(draft: McpDraft): McpSubmission {
   }
 }
 
-/** Map a Remote failure code to a locale key for user-facing copy. */
-export function failureLocaleKey(code: string): string {
-  switch (code) {
-    case 'MCP_SERVER_NAME_CONFLICT': return 'serverNameConflict'
-    case 'MCP_SERVER_NOT_FOUND': return 'notFound'
-    case 'MCP_INVALID_SPEC': return 'invalidSpec'
-    case 'MCP_MOUNT_FAILED': return 'mountFailed'
-    default: return 'failureTitle'
-  }
-}
-
 /**
  * Declares the MCP management page state and write surface.
  * @returns the store handle.

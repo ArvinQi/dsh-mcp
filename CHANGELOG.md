@@ -7,6 +7,18 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.3.0] - 2026-08-16
+
+### 新增
+
+- **Windows 工作目录支持**：stdio 服务器的 cwd 接受 Windows 盘符绝对路径（如 `C:\Users\...`、`C:/...`），与 POSIX `/`、UNC `\\` 路径一致（PR #2，感谢 @coding-chong）
+
+### 修复
+
+- 表单操作失败时展示真实错误信息：保存 / 删除 / 测试连接失败不再只显示笼统文案，直接展示 `code: message`（如 `MCP_SERVER_NAME_CONFLICT: serverName "x" is already used...`），便于定位问题
+- 刷新与保存/删除解耦：`refresh()` 失败不再误报保存结果，停留编辑页并显示刷新失败原因（`refresh()` 保留 try/catch 并返回结果）
+- 清理死代码：移除已无引用的 `failureLocaleKey`（错误展示改为直接显示 `code: message`）
+
 ## [1.2.0] - 2026-08-16
 
 ### 新增

@@ -5,7 +5,7 @@ import type {
 } from './types.ts'
 import type { InjectFace, PropsLocale, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
 import { McpServerForm, type McpServerFormRemote } from './ServerForm.tsx'
-import { ToolsJsonEditor } from './ToolsJsonEditor.tsx'
+import { ServersJsonEditor, type ServersJsonEntry } from './ServersJsonEditor.tsx'
 import type { McpToolControlRemote } from './ToolControlSection.tsx'
 import type { McpSettingsLocaleKey } from './locales.ts'
 import { createMcpManagerStore, type McpDraft, type McpTestOutcome } from './mcp-store.ts'
@@ -21,8 +21,8 @@ export interface McpManagerInjected extends McpServerFormRemote, McpToolControlR
   remove: (id: McpServerId) => Promise<McpManagerFailure | null>
   /** Probe one draft; `draft.id` lets stored secret values resolve. */
   test: (draft: McpDraft) => Promise<McpTestOutcome>
-  /** Apply a batch of tool enable switches (JSON editor path). */
-  toolsSetJson: (switches: Readonly<Record<string, boolean>>) => Promise<{ ok: boolean; count: number }>
+  /** Replace the whole server list (JSON editor path). */
+  upsertJson: (servers: readonly ServersJsonEntry[]) => Promise<{ added: number; updated: number; removed: number }>
 }
 
 /** Full component props assembled by the Settings slot renderer. */
@@ -273,20 +273,20 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
           aria-expanded={jsonOpen}
           onClick={() => setJsonOpen(open => !open)}
         >
-          {t('toolsJson')}
+          {t('serversJson')}
         </button>
         <button type="button" className={css.primary} onClick={beginCreate}>{t('addServer')}</button>
       </div>
 
       {jsonOpen ? (
-        <ToolsJsonEditor
-          injected={{ toolsList: props.toolsList, toolsSetJson: props.toolsSetJson }}
+        <ServersJsonEditor
+          injected={{ list: props.list, upsertJson: props.upsertJson }}
           t={t}
           onApplied={() => {
-            // The switches changed on the Host: refresh both the tool list
-            // and the server rows so the UI reflects the applied JSON.
-            refreshTools()
+            // The whole list changed on the Host: refresh the server rows and
+            // the tool list so the UI reflects the applied JSON.
             refreshServer('')
+            refreshTools()
           }}
         />
       ) : null}

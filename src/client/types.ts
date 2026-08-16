@@ -52,6 +52,8 @@ export interface McpEnvVarView {
   readonly name: string
   readonly secret: boolean
   readonly configured: boolean
+  /** Plain-text value of a non-secret env var (secret values never leave the Host). */
+  readonly value?: string
 }
 
 /** Lifecycle phase of one managed server's live mount. */

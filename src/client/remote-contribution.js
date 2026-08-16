@@ -32,6 +32,7 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_list_result$schema = z.object({
   'name': z.string().readonly(),
   'secret': z.boolean().readonly(),
   'configured': z.boolean().readonly(),
+  'value': z.string().readonly().optional(),
 })).readonly(),
   'toolCallTimeoutMs': z.number().readonly(),
   'failOnStartupError': z.boolean().readonly(),
@@ -121,6 +122,7 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_upsert_result$schema = z.union([z.
   'name': z.string().readonly(),
   'secret': z.boolean().readonly(),
   'configured': z.boolean().readonly(),
+  'value': z.string().readonly().optional(),
 })).readonly(),
   'toolCallTimeoutMs': z.number().readonly(),
   'failOnStartupError': z.boolean().readonly(),
@@ -130,6 +132,69 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_upsert_result$schema = z.union([z.
   'error': z.string().readonly().optional(),
 }).readonly(),
 }).readonly(),
+}), z.object({
+  'ok': z.literal(false).readonly(),
+  'error': z.object({
+  'code': z.union([z.literal("MCP_SERVER_NOT_FOUND"), z.literal("MCP_SERVER_NAME_CONFLICT"), z.literal("MCP_INVALID_SPEC"), z.literal("MCP_MOUNT_FAILED")]).readonly(),
+  'message': z.string().readonly(),
+}).readonly(),
+})])
+const _deepseek_ai_dsh_mcp_manager_mcpManager_upsertJson_parameter_0$schema = z.object({
+  'servers': z.array(z.object({
+  'server': z.object({
+  'serverName': z.string().readonly(),
+  'transport': z.union([z.literal("stdio"), z.literal("streamable-http")]).readonly(),
+  'enabled': z.boolean().readonly().optional(),
+  'command': z.string().readonly().optional(),
+  'args': z.array(z.string()).readonly().optional(),
+  'cwd': z.string().readonly().optional(),
+  'url': z.string().readonly().optional(),
+  'headers': z.union([z.record(z.string(), z.string()), z.array(z.object({
+  'name': z.string().readonly(),
+  'value': z.string().readonly(),
+})).readonly()]).readonly().optional(),
+  'toolCallTimeoutMs': z.number().readonly().optional(),
+  'failOnStartupError': z.boolean().readonly().optional(),
+}).readonly(),
+  'env': z.array(z.object({
+  'name': z.string().readonly(),
+  'secret': z.boolean().readonly().optional(),
+  'value': z.string().readonly().optional(),
+})).readonly().optional(),
+})).readonly(),
+})
+const _deepseek_ai_dsh_mcp_manager_mcpManager_upsertJson_result$schema = z.union([z.object({
+  'ok': z.literal(true).readonly(),
+  'added': z.number().readonly(),
+  'updated': z.number().readonly(),
+  'removed': z.number().readonly(),
+  'servers': z.array(z.object({
+  'id': z.intersection(z.string(), z.unknown()).readonly(),
+  'serverName': z.string().readonly(),
+  'transport': z.union([z.literal("stdio"), z.literal("streamable-http")]).readonly(),
+  'enabled': z.boolean().readonly(),
+  'command': z.string().readonly(),
+  'args': z.array(z.string()).readonly(),
+  'cwd': z.string().readonly(),
+  'url': z.string().readonly(),
+  'headers': z.array(z.object({
+  'name': z.string().readonly(),
+  'value': z.string().readonly(),
+})).readonly(),
+  'env': z.array(z.object({
+  'name': z.string().readonly(),
+  'secret': z.boolean().readonly(),
+  'configured': z.boolean().readonly(),
+  'value': z.string().readonly().optional(),
+})).readonly(),
+  'toolCallTimeoutMs': z.number().readonly(),
+  'failOnStartupError': z.boolean().readonly(),
+  'status': z.object({
+  'phase': z.union([z.literal("failed"), z.literal("stopped"), z.literal("mounting"), z.literal("live")]).readonly(),
+  'tools': z.array(z.string()).readonly(),
+  'error': z.string().readonly().optional(),
+}).readonly(),
+})).readonly(),
 }), z.object({
   'ok': z.literal(false).readonly(),
   'error': z.object({
@@ -158,19 +223,6 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_toolsSet_result$schema = z.union([
   'ok': z.literal(false).readonly(),
   'error': z.object({
   'code': z.union([z.literal("MCP_TOOL_NOT_FOUND")]).readonly(),
-  'message': z.string().readonly(),
-}).readonly(),
-})])
-const _deepseek_ai_dsh_mcp_manager_mcpManager_toolsSetJson_parameter_0$schema = z.object({
-  'switches': z.record(z.string(), z.boolean()).readonly(),
-})
-const _deepseek_ai_dsh_mcp_manager_mcpManager_toolsSetJson_result$schema = z.union([z.object({
-  'ok': z.literal(true).readonly(),
-  'count': z.number().readonly(),
-}), z.object({
-  'ok': z.literal(false).readonly(),
-  'error': z.object({
-  'code': z.union([z.literal("MCP_TOOL_INVALID_JSON")]).readonly(),
   'message': z.string().readonly(),
 }).readonly(),
 })])
@@ -282,6 +334,31 @@ export const TYPERT_REMOTE = {
       sourceLocation: {"file":"packages/mcp/mcp-manager/src/index.ts","line":329,"column":9},
     },
     {
+      id: '@deepseek-ai/dsh-mcp-manager#mcpManager/upsertJson',
+      service: 'mcpManager',
+      namespace: 'mcpManager',
+      method: 'upsertJson',
+      invocation: { kind: 'direct' },
+      parameters: [
+        {
+          name: 'request',
+          wire: 'request',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: '@deepseek-ai/dsh-mcp-manager/types#McpManagerUpsertJsonRequest',
+            schema: _deepseek_ai_dsh_mcp_manager_mcpManager_upsertJson_parameter_0$schema,
+          },
+        },
+      ],
+      result: {
+        mode: 'strict',
+        typeSymbol: '@deepseek-ai/dsh-mcp-manager/types#McpManagerUpsertJsonResult',
+        schema: _deepseek_ai_dsh_mcp_manager_mcpManager_upsertJson_result$schema,
+      },
+      sourceLocation: {"file":"lib/index.js"},
+    },
+    {
       id: '@deepseek-ai/dsh-mcp-manager#mcpManager/toolsList',
       service: 'mcpManager',
       namespace: 'mcpManager',
@@ -318,31 +395,6 @@ export const TYPERT_REMOTE = {
         mode: 'strict',
         typeSymbol: '@deepseek-ai/dsh-mcp-manager/types#McpManagerToolsSetResult',
         schema: _deepseek_ai_dsh_mcp_manager_mcpManager_toolsSet_result$schema,
-      },
-      sourceLocation: {"file":"lib/index.js"},
-    },
-    {
-      id: '@deepseek-ai/dsh-mcp-manager#mcpManager/toolsSetJson',
-      service: 'mcpManager',
-      namespace: 'mcpManager',
-      method: 'toolsSetJson',
-      invocation: { kind: 'direct' },
-      parameters: [
-        {
-          name: 'request',
-          wire: 'request',
-          source: 'json',
-          codec: {
-            mode: 'strict',
-            typeSymbol: '@deepseek-ai/dsh-mcp-manager/types#McpManagerToolsSetJsonRequest',
-            schema: _deepseek_ai_dsh_mcp_manager_mcpManager_toolsSetJson_parameter_0$schema,
-          },
-        },
-      ],
-      result: {
-        mode: 'strict',
-        typeSymbol: '@deepseek-ai/dsh-mcp-manager/types#McpManagerToolsSetJsonResult',
-        schema: _deepseek_ai_dsh_mcp_manager_mcpManager_toolsSetJson_result$schema,
       },
       sourceLocation: {"file":"lib/index.js"},
     },

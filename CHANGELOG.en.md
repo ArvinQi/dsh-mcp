@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **JSON editor for the whole tool list**: a new "JSON tool editor" panel on Settings → MCP views and edits every MCP tool's enable switch as one JSON document grouped by server (`{ "server": { "tool": true/false } }`); Apply submits the whole switch set in a single call (new host `toolsSetJson` batch method) and refreshes the tool list automatically — no more per-tool clicking
+- **JSON editor for the whole MCP server list**: a new "JSON config editor" panel on Settings → MCP views and edits every server definition as one JSON array (serverName / transport / enabled / url / command / args / cwd / headers / timeout / failOnStartupError / env); applying replaces the whole list — listed servers are created or updated, existing servers absent from the document are removed (new host `upsertJson` batch method, with a confirmation step before applying), and the server list and tool list refresh automatically afterwards
+- The server list (`list`) now returns non-secret env values with each server so they round-trip through the JSON editor; secret values still live only in the credentials document (exported as a `configured` flag; a blank value keeps the stored one)
 
 ## [1.3.0] - 2026-08-16
 

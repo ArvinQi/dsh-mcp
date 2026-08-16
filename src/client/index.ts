@@ -29,6 +29,12 @@ interface McpManagerRemote {
     readonly env: readonly unknown[]
   }): Promise<McpRemoteResult<{ readonly server: McpServerView }>>
   delete(request: { readonly id: McpServerId }): Promise<McpRemoteResult<unknown>>
+  upsertJson(request: { readonly servers: readonly unknown[] }): Promise<McpRemoteResult<{
+    readonly added: number
+    readonly updated: number
+    readonly removed: number
+    readonly servers: readonly McpServerView[]
+  }>>
   test(request: {
     readonly id?: McpServerId
     readonly server: unknown
@@ -36,7 +42,6 @@ interface McpManagerRemote {
   }): Promise<McpRemoteResult<{ readonly probe: unknown; readonly elapsedMs: number }>>
   toolsList(): Promise<McpRemoteResult<{ readonly tools: readonly unknown[]; readonly mode: unknown; readonly hotSize: number }>>
   toolsSet(request: { readonly name: string; readonly enabled: boolean }): Promise<McpRemoteResult<{ readonly ok: boolean }>>
-  toolsSetJson(request: { readonly switches: Readonly<Record<string, boolean>> }): Promise<McpRemoteResult<{ readonly ok: boolean; readonly count: number }>>
   toolsMode(request: { readonly mode: unknown }): Promise<McpRemoteResult<{ readonly ok: boolean }>>
 }
 
@@ -124,6 +129,10 @@ export async function apply(ctx: ClientContext): Promise<void> {
       if (result.ok) return null
       return failureOf(result.error)
     },
+    upsertJson: async (servers) => {
+      const result = await unwrap(() => manager.upsertJson({ servers }))
+      return { added: result.added, updated: result.updated, removed: result.removed, servers: result.servers }
+    },
     test: async (draft) => {
       const submission = draftToSubmission(draft)
       const result = await unwrap(() => manager.test({
@@ -142,10 +151,6 @@ export async function apply(ctx: ClientContext): Promise<void> {
       // `request` is the single wire parameter: pass the payload directly.
       const result = await unwrap(() => manager.toolsSet(request))
       return { ok: result.ok }
-    },
-    toolsSetJson: async (switches) => {
-      const result = await unwrap(() => manager.toolsSetJson({ switches }))
-      return { ok: result.ok, count: result.count }
     },
     toolsMode: async (request) => {
       const result = await unwrap(() => manager.toolsMode({ mode: request.mode }))

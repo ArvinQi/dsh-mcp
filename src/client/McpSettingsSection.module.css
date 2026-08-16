@@ -68,6 +68,12 @@ button:disabled {
   background: var(--dsw-alias-button-primary-hover);
 }
 
+.active {
+  border-color: var(--dsw-alias-brand-primary);
+  color: var(--dsw-alias-brand-primary);
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary) 10%, transparent);
+}
+
 .list {
   display: flex;
   flex-direction: column;

@@ -161,6 +161,19 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_toolsSet_result$schema = z.union([
   'message': z.string().readonly(),
 }).readonly(),
 })])
+const _deepseek_ai_dsh_mcp_manager_mcpManager_toolsSetJson_parameter_0$schema = z.object({
+  'switches': z.record(z.string(), z.boolean()).readonly(),
+})
+const _deepseek_ai_dsh_mcp_manager_mcpManager_toolsSetJson_result$schema = z.union([z.object({
+  'ok': z.literal(true).readonly(),
+  'count': z.number().readonly(),
+}), z.object({
+  'ok': z.literal(false).readonly(),
+  'error': z.object({
+  'code': z.union([z.literal("MCP_TOOL_INVALID_JSON")]).readonly(),
+  'message': z.string().readonly(),
+}).readonly(),
+})])
 const _deepseek_ai_dsh_mcp_manager_mcpManager_toolsMode_parameter_0$schema = z.object({
   'mode': z.union([z.literal("full"), z.literal("search")]).readonly(),
 })
@@ -305,6 +318,31 @@ export const TYPERT_REMOTE = {
         mode: 'strict',
         typeSymbol: '@deepseek-ai/dsh-mcp-manager/types#McpManagerToolsSetResult',
         schema: _deepseek_ai_dsh_mcp_manager_mcpManager_toolsSet_result$schema,
+      },
+      sourceLocation: {"file":"lib/index.js"},
+    },
+    {
+      id: '@deepseek-ai/dsh-mcp-manager#mcpManager/toolsSetJson',
+      service: 'mcpManager',
+      namespace: 'mcpManager',
+      method: 'toolsSetJson',
+      invocation: { kind: 'direct' },
+      parameters: [
+        {
+          name: 'request',
+          wire: 'request',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: '@deepseek-ai/dsh-mcp-manager/types#McpManagerToolsSetJsonRequest',
+            schema: _deepseek_ai_dsh_mcp_manager_mcpManager_toolsSetJson_parameter_0$schema,
+          },
+        },
+      ],
+      result: {
+        mode: 'strict',
+        typeSymbol: '@deepseek-ai/dsh-mcp-manager/types#McpManagerToolsSetJsonResult',
+        schema: _deepseek_ai_dsh_mcp_manager_mcpManager_toolsSetJson_result$schema,
       },
       sourceLocation: {"file":"lib/index.js"},
     },

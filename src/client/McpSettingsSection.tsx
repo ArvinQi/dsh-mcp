@@ -5,6 +5,7 @@ import type {
 } from './types.ts'
 import type { InjectFace, PropsLocale, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
 import { McpServerForm, type McpServerFormRemote } from './ServerForm.tsx'
+import { ToolsJsonEditor } from './ToolsJsonEditor.tsx'
 import type { McpToolControlRemote } from './ToolControlSection.tsx'
 import type { McpSettingsLocaleKey } from './locales.ts'
 import { createMcpManagerStore, type McpDraft, type McpTestOutcome } from './mcp-store.ts'
@@ -20,6 +21,8 @@ export interface McpManagerInjected extends McpServerFormRemote, McpToolControlR
   remove: (id: McpServerId) => Promise<McpManagerFailure | null>
   /** Probe one draft; `draft.id` lets stored secret values resolve. */
   test: (draft: McpDraft) => Promise<McpTestOutcome>
+  /** Apply a batch of tool enable switches (JSON editor path). */
+  toolsSetJson: (switches: Readonly<Record<string, boolean>>) => Promise<{ ok: boolean; count: number }>
 }
 
 /** Full component props assembled by the Settings slot renderer. */
@@ -86,6 +89,7 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
   const [toolsError, setToolsError] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set())
   const [refreshing, setRefreshing] = useState<ReadonlySet<string>>(new Set())
+  const [jsonOpen, setJsonOpen] = useState(false)
   const timersRef = useRef<number[]>([])
 
   useEffect(() => () => {
@@ -263,8 +267,29 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
   return (
     <div className={css.section}>
       <div className={css.header}>
+        <button
+          type="button"
+          className={jsonOpen ? css.active : undefined}
+          aria-expanded={jsonOpen}
+          onClick={() => setJsonOpen(open => !open)}
+        >
+          {t('toolsJson')}
+        </button>
         <button type="button" className={css.primary} onClick={beginCreate}>{t('addServer')}</button>
       </div>
+
+      {jsonOpen ? (
+        <ToolsJsonEditor
+          injected={{ toolsList: props.toolsList, toolsSetJson: props.toolsSetJson }}
+          t={t}
+          onApplied={() => {
+            // The switches changed on the Host: refresh both the tool list
+            // and the server rows so the UI reflects the applied JSON.
+            refreshTools()
+            refreshServer('')
+          }}
+        />
+      ) : null}
 
       <div className={css.modeRow}>
         <span className={css.modeLabel}>{t('toolsModeLabel')}</span>

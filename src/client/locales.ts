@@ -73,6 +73,12 @@ export const zh = {
   refreshing: '刷新中…',
   toolsExpand: '展开工具',
   toolsCollapse: '收起工具',
+  toolsJson: 'JSON 维护工具',
+  toolsJsonLabel: '工具列表 JSON',
+  toolsJsonHint: '按服务器分组的工具启用状态：true = 注入该工具，false = 不注入。应用后立即生效并刷新工具列表。',
+  toolsJsonReseed: '重新导出',
+  toolsJsonApply: '应用',
+  toolsJsonSaving: '应用中…',
 } satisfies Record<string, string>
 
 /** MCP settings locale key union. */
@@ -151,4 +157,10 @@ export const en = {
   refreshing: 'Refreshing…',
   toolsExpand: 'Expand tools',
   toolsCollapse: 'Collapse tools',
+  toolsJson: 'JSON tool editor',
+  toolsJsonLabel: 'Tool-list JSON',
+  toolsJsonHint: 'Tool enable switches grouped by server: true = inject the tool, false = keep it out. Apply takes effect immediately and refreshes the tool list.',
+  toolsJsonReseed: 'Re-export',
+  toolsJsonApply: 'Apply',
+  toolsJsonSaving: 'Applying…',
 } satisfies Record<McpSettingsLocaleKey, string>

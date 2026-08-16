@@ -7,6 +7,12 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased]
+
+### 新增
+
+- **JSON 维护所有工具列表**：Settings → MCP 页新增「JSON 维护工具」面板，以纯 JSON 文档按服务器分组查看/编辑全部 MCP 工具的启用状态（`{ "服务器": { "工具": true/false } }`）；应用时一次性提交全部开关（host 新增 `toolsSetJson` 批量方法），保存后自动刷新工具列表，无需逐工具勾选
+
 ## [1.3.0] - 2026-08-16
 
 ### 新增

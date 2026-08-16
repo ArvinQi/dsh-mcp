@@ -336,6 +336,10 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
               refreshServer('')
               refreshTools()
               setJsonOpen(false)
+              // Mounting is asynchronous: refresh again after the connection
+              // settles so badges/tool counts reflect the live state.
+              timersRef.current.push(window.setTimeout(() => refreshServer(''), 2000))
+              timersRef.current.push(window.setTimeout(() => refreshServer(''), 6000))
             }}
           />
         ) : null}

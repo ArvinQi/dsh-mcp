@@ -16,6 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - OAuth token credential-ref names collided with hyphens in server ids and failed credential validation (ref names only allow `[A-Za-z_][A-Za-z0-9_]*`): refs now use a sanitized server id plus a stable short hash, avoiding illegal characters and naming collisions
+- The interactive OAuth probe budget was raised from 90 seconds to 5 minutes: the first authorization requires browser login/approval, and slower-than-90s flows caused the probe to time out and report a false failure (the authorization had actually succeeded and tokens were saved); now the test result appears automatically once authorization completes
+- Disabled servers no longer render two "Disabled" badges (the phase badge plus a redundant caption)
+
+### Improved
+
+- While testing a streamable-http server, a hint explains that a browser authorization page may open and the result refreshes automatically after it is completed
+- After saving a server, the list refreshes itself on a delay so "Connecting" settles to "Connected" once the mount is live
 
 ## [1.1.0] - 2026-08-15
 

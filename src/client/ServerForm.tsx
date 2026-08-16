@@ -34,11 +34,13 @@ export interface McpServerFormProps {
   t: (key: McpSettingsLocaleKey) => string
   actions: McpServerFormActions
   injected: McpServerFormRemote
+  /** Called after a successful save, before the editor closes. */
+  onSaved?: () => void
 }
 
 /** Render the editor for one server draft. */
 export function McpServerForm(props: McpServerFormProps): ReactNode {
-  const { draft, busy, testRunning, test, t, actions, injected } = props
+  const { draft, busy, testRunning, test, t, actions, injected, onSaved } = props
   const [saveError, setSaveError] = useState<string | null>(null)
 
   const update = (patch: Partial<McpDraft>): void => {
@@ -81,6 +83,7 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
       }
       await refresh()
       actions.cancelEdit()
+      onSaved?.()
     } catch {
       setSaveError(t('failureTitle'))
     } finally {
@@ -285,6 +288,10 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
               ? `${t('testFail')}: ${probe.message}`
               : t('testUnknown')}
         </p>
+      ) : null}
+
+      {testRunning && draft.transport === 'streamable-http' ? (
+        <p className={css.muted} role="status">{t('testBrowserHint')}</p>
       ) : null}
 
       <div className={css.actions}>

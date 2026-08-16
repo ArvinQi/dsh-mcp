@@ -248,6 +248,14 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
         t={t}
         actions={actions}
         injected={{ save, remove, test, list }}
+        onSaved={() => {
+          // Mounting is asynchronous: refresh again after the connection
+          // settles so the badge and tool count reflect the live state without
+          // a manual refresh (mirrors the enable-toggle path).
+          const serverName = state.draft.serverName
+          timersRef.current.push(window.setTimeout(() => refreshServer(serverName), 2000))
+          timersRef.current.push(window.setTimeout(() => refreshServer(serverName), 6000))
+        }}
       />
     )
   }
@@ -298,7 +306,7 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
                     <div className={css.rowTitle}>
                       <span className={css.serverName}>{server.serverName}</span>
                       <span className={`${css.badge} ${css[server.status.phase]}`}>{t(phaseKey(server.status.phase))}</span>
-                      {!server.enabled ? <span className={css.muted}>{t('statusStopped')}</span> : null}
+                      {!server.enabled && server.status.phase !== 'stopped' ? <span className={css.muted}>{t('statusStopped')}</span> : null}
                     </div>
                     <div className={css.rowMeta}>
                       <span>{server.transport}</span>

@@ -87,11 +87,16 @@ export const zh = {
   globalEnvSecret: 'secret',
   globalEnvSecretHint: '值只写，保存后不可见；留空表示保留原值',
   globalEnvAdd: '添加变量',
+  globalEnvBulk: '批量添加',
+  globalEnvBulkPrompt: '批量添加变量：每行一个，格式 NAME=value（不写 = 则仅填变量名）。\n例如：\nMY_TOKEN=abc123\nAPI_BASE=http://localhost:8080',
   globalEnvSave: '保存',
   globalEnvSaving: '保存中…',
   globalEnvRemove: '移除该变量',
   globalEnvEmpty: '（暂无进程环境变量）',
+  globalEnvLoadFailed: '读取环境变量失败',
+  globalEnvRetry: '重试',
   globalEnvDone: '已保存',
+  configTitle: 'MCP 配置',
 } satisfies Record<string, string>
 
 /** MCP settings locale key union. */
@@ -184,9 +189,14 @@ export const en = {
   globalEnvSecret: 'secret',
   globalEnvSecretHint: 'Write-only; a blank value keeps the stored one',
   globalEnvAdd: 'Add variable',
+  globalEnvBulk: 'Add many',
+  globalEnvBulkPrompt: 'Add many variables, one per line, as NAME=value (a bare NAME adds a name-only row).\ne.g.\nMY_TOKEN=abc123\nAPI_BASE=http://localhost:8080',
   globalEnvSave: 'Save',
   globalEnvSaving: 'Saving…',
   globalEnvRemove: 'Remove this variable',
   globalEnvEmpty: '(no process env vars)',
+  globalEnvLoadFailed: 'Failed to read environment variables',
+  globalEnvRetry: 'Retry',
   globalEnvDone: 'Saved',
+  configTitle: 'MCP config',
 } satisfies Record<McpSettingsLocaleKey, string>

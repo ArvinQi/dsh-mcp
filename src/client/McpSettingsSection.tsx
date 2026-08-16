@@ -91,7 +91,7 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set())
   const [refreshing, setRefreshing] = useState<ReadonlySet<string>>(new Set())
   const [jsonOpen, setJsonOpen] = useState(false)
-  const [envOpen, setEnvOpen] = useState(false)
+  const [envOpen, setEnvOpen] = useState(true)
   const timersRef = useRef<number[]>([])
 
   useEffect(() => () => {
@@ -268,51 +268,6 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
 
   return (
     <div className={css.section}>
-      <div className={css.header}>
-        <button
-          type="button"
-          className={envOpen ? css.active : undefined}
-          aria-expanded={envOpen}
-          onClick={() => setEnvOpen(open => !open)}
-        >
-          {t('globalEnv')}
-        </button>
-        <button
-          type="button"
-          className={jsonOpen ? css.active : undefined}
-          aria-expanded={jsonOpen}
-          onClick={() => setJsonOpen(open => !open)}
-        >
-          {t('serversJson')}
-        </button>
-        <button type="button" className={css.primary} onClick={beginCreate}>{t('addServer')}</button>
-      </div>
-
-      {envOpen ? (
-        <GlobalEnvEditor
-          injected={{ envList: props.envList, envSet: props.envSet }}
-          t={t}
-          onApplied={() => {
-            // New process env may feed header substitution: refresh server
-            // rows (connection attempts re-resolve env) but keep the tool list.
-            refreshServer('')
-          }}
-        />
-      ) : null}
-
-      {jsonOpen ? (
-        <ServersJsonEditor
-          injected={{ list: props.list, upsertJson: props.upsertJson }}
-          t={t}
-          onApplied={() => {
-            // The whole list changed on the Host: refresh the server rows and
-            // the tool list so the UI reflects the applied JSON.
-            refreshServer('')
-            refreshTools()
-          }}
-        />
-      ) : null}
-
       <div className={css.modeRow}>
         <span className={css.modeLabel}>{t('toolsModeLabel')}</span>
         <label className={css.modeOption}>
@@ -338,9 +293,60 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
         {toolsError !== null ? toolsError : tools === null ? t('toolsLoading') : mode === 'search' ? t('toolsHintSearch') : t('toolsHintFull')}
       </p>
 
-      {state.servers.length === 0 ? (
-        <p className={css.status}>{t('empty')}</p>
-      ) : (
+      <div className={css.module}>
+        <button
+          type="button"
+          className={css.moduleTitle}
+          aria-expanded={envOpen}
+          onClick={() => setEnvOpen(open => !open)}
+        >
+          <span className={css.caret}>{envOpen ? '▾' : '▸'}</span>
+          {t('globalEnv')}
+        </button>
+        {envOpen ? (
+          <GlobalEnvEditor
+            injected={{ envList: props.envList, envSet: props.envSet }}
+            t={t}
+            onApplied={() => {
+              // New process env may feed header substitution: refresh server
+              // rows (connection attempts re-resolve env) but keep the tool list.
+              refreshServer('')
+            }}
+          />
+        ) : null}
+      </div>
+
+      <div className={css.module}>
+        <div className={css.configHeader}>
+          <span className={css.moduleTitle}>{t('configTitle')}</span>
+          <div className={css.configActions}>
+            <button
+              type="button"
+              className={jsonOpen ? css.active : undefined}
+              aria-expanded={jsonOpen}
+              onClick={() => setJsonOpen(open => !open)}
+            >
+              {t('serversJson')}
+            </button>
+            <button type="button" className={css.primary} onClick={beginCreate}>{t('addServer')}</button>
+          </div>
+        </div>
+        {jsonOpen ? (
+          <ServersJsonEditor
+            injected={{ list: props.list, upsertJson: props.upsertJson }}
+            t={t}
+            onApplied={() => {
+              // The whole list changed on the Host: refresh the server rows and
+              // the tool list so the UI reflects the applied JSON.
+              refreshServer('')
+              refreshTools()
+            }}
+          />
+        ) : null}
+
+        {state.servers.length === 0 ? (
+          <p className={css.status}>{t('empty')}</p>
+        ) : (
         <ul className={css.list}>
           {state.servers.map(server => {
             const isExpanded = expanded.has(server.serverName)
@@ -401,6 +407,7 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
           })}
         </ul>
       )}
+      </div>
     </div>
   )
 }

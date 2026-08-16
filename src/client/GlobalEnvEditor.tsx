@@ -53,14 +53,15 @@ export function GlobalEnvEditor({ injected, t, onApplied }: GlobalEnvEditorProps
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [loaded, setLoaded] = useState(false)
+  const [loadFailed, setLoadFailed] = useState(false)
   const seqRef = useRef(0)
 
-  useEffect(() => {
-    if (loaded) return
-    let current = true
+  const reload = (): void => {
+    const seq = ++seqRef.current
+    setLoadFailed(false)
     void injected.envList().then(
       (state) => {
-        if (!current) return
+        if (seq !== seqRef.current) return
         setRows(state.vars.map(row => ({
           key: nextKey(),
           name: row.name,
@@ -71,9 +72,18 @@ export function GlobalEnvEditor({ injected, t, onApplied }: GlobalEnvEditorProps
         setLoaded(true)
         setError(null)
       },
-      () => { if (current) setError('无法读取环境变量') },
+      (error: unknown) => {
+        if (seq !== seqRef.current) return
+        setLoadFailed(true)
+        setError(error instanceof Error ? error.message : String(error))
+      },
     )
-    return () => { current = false }
+  }
+
+  useEffect(() => {
+    if (loaded) return
+    reload()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [injected, loaded])
 
   const update = (key: string, patch: Partial<EnvRowDraft>): void => {
@@ -84,6 +94,27 @@ export function GlobalEnvEditor({ injected, t, onApplied }: GlobalEnvEditorProps
   }
   const add = (): void => {
     setRows(prev => [...prev, emptyRow()])
+  }
+
+  /** Parse "NAME=value" lines (one per line) into fresh draft rows. */
+  const addMany = (): void => {
+    const text = window.prompt(t('globalEnvBulkPrompt'), '')
+    if (text === null) return
+    const parsed = text.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0)
+    if (parsed.length === 0) return
+    const next: EnvRowDraft[] = []
+    for (const line of parsed) {
+      const eq = line.indexOf('=')
+      if (eq <= 0) {
+        next.push({ key: nextKey(), name: line, secret: false, value: '', configured: false })
+        continue
+      }
+      const name = line.slice(0, eq).trim()
+      const value = line.slice(eq + 1)
+      if (name.length === 0) continue
+      next.push({ key: nextKey(), name, secret: false, value, configured: false })
+    }
+    if (next.length > 0) setRows(prev => [...prev, ...next])
   }
 
   const save = (): void => {
@@ -135,7 +166,7 @@ export function GlobalEnvEditor({ injected, t, onApplied }: GlobalEnvEditorProps
   return (
     <div className={css.panel}>
       <p className={css.hint}>{t('globalEnvHint')}</p>
-      {rows.length === 0 ? <p className={css.muted}>{t('globalEnvEmpty')}</p> : null}
+      {rows.length === 0 && !loadFailed ? <p className={css.muted}>{t('globalEnvEmpty')}</p> : null}
       {rows.map(row => (
         <div key={row.key} className={css.row}>
           <input
@@ -168,10 +199,17 @@ export function GlobalEnvEditor({ injected, t, onApplied }: GlobalEnvEditorProps
           </button>
         </div>
       ))}
-      {error !== null ? <p className={css.error} role="alert">{error}</p> : null}
+      {loadFailed ? (
+        <div className={css.retryRow}>
+          <p className={css.error} role="alert">{t('globalEnvLoadFailed')}</p>
+          <button type="button" onClick={reload}>{t('globalEnvRetry')}</button>
+        </div>
+      ) : null}
+      {error !== null && !loadFailed ? <p className={css.error} role="alert">{error}</p> : null}
       {notice !== null ? <p className={css.notice} role="status">{notice}</p> : null}
       <div className={css.actions}>
         <button type="button" disabled={busy} onClick={add}>{t('globalEnvAdd')}</button>
+        <button type="button" disabled={busy} onClick={addMany}>{t('globalEnvBulk')}</button>
         <button type="button" className={css.primary} disabled={busy} onClick={save}>
           {busy ? t('globalEnvSaving') : t('globalEnvSave')}
         </button>

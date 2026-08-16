@@ -43,7 +43,7 @@ button:hover {
 }
 
 button:focus-visible {
-  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline: 2px solid var(--dsw-alias-brand-primary);
   outline-offset: 1px;
 }
 
@@ -53,13 +53,13 @@ button:disabled {
 }
 
 .primary {
-  border-color: var(--dsw-alias-state-business-primary);
-  background: var(--dsw-alias-state-business-primary);
-  color: var(--dsw-alias-label-on-accent);
+  border-color: var(--dsw-alias-button-primary-fill);
+  background: var(--dsw-alias-button-primary-fill);
+  color: var(--dsw-alias-label-primary-foreground);
 }
 
 .primary:hover {
-  background: var(--dsw-alias-state-business-primary-hover);
+  background: var(--dsw-alias-button-primary-hover);
 }
 
 .danger {
@@ -106,8 +106,8 @@ button:disabled {
 .field input:focus-visible,
 .field select:focus-visible,
 .field textarea:focus-visible {
-  border-color: var(--dsw-alias-state-business-primary);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--dsw-alias-state-business-primary) 18%, transparent);
+  border-color: var(--dsw-alias-brand-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--dsw-alias-brand-primary) 18%, transparent);
 }
 
 .envBlock {

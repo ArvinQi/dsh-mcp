@@ -49,7 +49,7 @@ button:hover {
 }
 
 button:focus-visible {
-  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline: 2px solid var(--dsw-alias-brand-primary);
   outline-offset: 1px;
 }
 
@@ -59,13 +59,13 @@ button:disabled {
 }
 
 .primary {
-  border-color: var(--dsw-alias-state-business-primary);
-  background: var(--dsw-alias-state-business-primary);
-  color: var(--dsw-alias-label-on-accent);
+  border-color: var(--dsw-alias-button-primary-fill);
+  background: var(--dsw-alias-button-primary-fill);
+  color: var(--dsw-alias-label-primary-foreground);
 }
 
 .primary:hover {
-  background: var(--dsw-alias-state-business-primary-hover);
+  background: var(--dsw-alias-button-primary-hover);
 }
 
 .list {
@@ -123,8 +123,8 @@ button:disabled {
 }
 
 .badge.mounting {
-  background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 12%, transparent);
-  color: var(--dsw-alias-state-business-primary);
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent);
+  color: var(--dsw-alias-brand-primary);
 }
 
 .badge.live {

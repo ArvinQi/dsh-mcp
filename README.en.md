@@ -15,10 +15,12 @@
 **Highlights:**
 
 - **Visual management**: server list / create / edit / delete / test connection / enable-disable / refresh, all in the UI
+- **Process-level environment variables**: a global key-value list (expanded by default, batch-add supported); header values can reference a variable by bare name or `${NAME}` and are substituted at connect time (e.g. `Authorization: Bearer ${TOKEN}`)
+- **Whole-list JSON config**: the "JSON config editor" panel views/edits every server as one JSON array; applying saves immediately (create/update/delete)
 - **Fine-grained tool control**: expand each server to see its tools, all checked by default; uncheck to load only what you need
 - **Two injection modes**: `search` (on-demand, token-saving) and `full` (inject everything)
 - **Zero npm dependencies**: plugs into DeepSeek Harness internals, install and go
-- **OAuth authentication**: for `streamable-http` servers using MCP OAuth (authorization-code + PKCE), the browser opens automatically for authorization on connect; tokens are persisted and refreshed automatically by the SDK (auto-renewed while active within 24h)
+- **OAuth authentication**: for `streamable-http` servers using MCP OAuth (authorization-code + PKCE), the browser opens automatically for authorization on connect; tokens and OAuth client info are persisted and refreshed automatically by the SDK (auto-renewed while active within 24h), with automatic re-authorization after expiry
 - **Three install paths**: npm / GitHub git source / local link; bilingual UI and docs
 
 Migrated and merged from uncommitted MCP work in the `deepseek-harness` repository:
@@ -125,10 +127,25 @@ Then **restart `dsh web`** (client roster changes require a restart); afterwards
 
 **Add a server**:
 
-1. Click **Add server**.
+1. Click **Add server** (the form expands inline above the list).
 2. Fill in: server name (`serverName`, determines the tool prefix `mcp__<serverName>__`), transport
    (`streamable-http` → URL / `stdio` → command), headers, tool-call timeout, etc.
 3. Click **Test connection** to verify connectivity and the tool list, then **Save**.
+
+**Process env vars** (below the injection mode, expanded by default):
+
+- Configure global key-value pairs referenced by every server's header substitution;
+  secret values are stored in the credentials document, a blank value keeps the stored one
+- Batch-add (paste one `NAME=value` per line) or add rows one by one
+- A header value can reference a variable by **bare name** or **`${NAME}`** (e.g. `Authorization: Bearer ${GITLAB_TOKEN}`),
+  substituted at connect time (priority: server env > process-level env > system environment)
+
+**JSON config editor** (top-right of the MCP config module):
+
+- View/edit every server definition as one JSON array; applying replaces the whole list
+  (create/update/delete) and refreshes the list and tool list automatically;
+  the UI list is hidden while the JSON panel is open and restored after applying
+- Server-level env (secret flags and stdio child injection) is still maintained through the JSON editor
 
 **OAuth servers** (`streamable-http` using MCP OAuth, e.g. OAuth-protected gateway services):
 
@@ -136,9 +153,10 @@ Then **restart `dsh web`** (client roster changes require a restart); afterwards
   the plugin **opens the browser automatically** for authorization.
 - Log in / approve in the browser and return to DSH; the test result refreshes automatically
   ("connection succeeded + tool count").
-- Tokens are persisted in the credentials document (scoped by `serverName`) and refreshed automatically
-  by the MCP SDK (auto-renewed while active within 24h); after authorizing once, mounts and later
-  test connections reuse the same token — no repeated authorization.
+- Tokens and the registered OAuth client are persisted in the credentials document (scoped by `serverName`)
+  and refreshed automatically by the MCP SDK (auto-renewed while active within 24h); after authorizing once,
+  mounts and later test connections reuse the same token, and an expired token triggers a fresh
+  browser authorization automatically.
 - The first authorization needs browser interaction, so the test/connect wait budget is relaxed to
   5 minutes; non-OAuth servers are unaffected and fail fast.
 

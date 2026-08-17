@@ -7,21 +7,22 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [Unreleased]
+## [1.4.0] - 2026-08-16
 
 ### 新增
 
-- **进程级环境变量**：Settings → MCP 页新增「进程环境变量」配置区（全局 KV，跨所有服务器，默认展开，支持批量添加与加载失败重试）；MCP 服务器请求头 value 可直接写 `变量名` 或 `${变量名}` 引用，连接时自动替换为配置值（替换优先级：服务器 env > 进程级 env > 系统环境变量）；secret 值写入凭据文档，留空保留原值
-- **页面布局**：注入模式置顶 → 环境变量模块（默认展开）→ MCP 配置模块；添加/编辑服务器表单内联展示在列表上方（列表始终可见）；JSON 配置面板展开时隐藏 UI 列表，应用后自动恢复列表
-- **服务器表单不再编辑环境变量**（由进程级环境变量统一管理）：保存时不提交 env，已有服务器 env 保持不变（JSON 配置编辑器仍可全量编辑 env）
-- **请求头环境变量替换**：`streamable-http` 服务器的请求头 value 支持 `${ENV}` 占位符与裸变量名，连接时按该服务器配置的环境变量（含 secret，从凭据文档解析）、进程级环境变量或进程环境替换（如 `Authorization: Bearer ${TOKEN}`）；未匹配的占位符原样保留，避免误清空
-- **HTTP 服务器环境变量配置**：streamable-http 服务器现在同样提供环境变量配置区（此前仅 stdio），作为请求头替换的来源；JSON 配置编辑器已天然支持
+- **进程级环境变量**：Settings → MCP 页新增「进程环境变量」配置区（全局 KV，跨所有服务器，默认展开，支持批量添加与加载失败重试）；secret 值写入凭据文档，留空保留原值
+- **请求头环境变量替换**：`streamable-http` 服务器的请求头 value 支持 `${ENV}` 占位符与裸变量名，连接时按服务器 env（含 secret）、进程级环境变量、系统环境变量依次替换（如 `Authorization: Bearer ${TOKEN}`）；未匹配的占位符原样保留，避免误清空
 - **JSON 维护服务器配置列表**：Settings → MCP 页新增「JSON 维护配置」面板，以纯 JSON 数组查看/编辑**全部 MCP 服务器配置**（serverName / transport / enabled / url / command / args / cwd / headers / 超时 / failOnStartupError / env）；应用时按列表全量替换——已列出的服务器创建或更新、未列出的删除（host 新增 `upsertJson` 批量方法，点应用直接保存），保存后自动刷新服务器列表与工具列表
+- **页面布局重构**：注入模式置顶 → 环境变量模块（默认展开）→ MCP 配置模块；添加/编辑服务器表单内联展示在列表上方或对应行下方（列表始终可见）；JSON 配置面板展开时隐藏 UI 列表，应用后自动恢复
+- **服务器表单不再编辑环境变量**（由进程级环境变量统一管理）：表单保存不提交 env，已有服务器 env 保持不变；JSON 配置编辑器仍可全量编辑服务器 env（含 stdio 子进程注入）
 - 服务器列表导出（`list`）中的非 secret 环境变量值随配置返回，可随 JSON 往返编辑；secret 值仍只存凭据文档（导出仅 `configured` 标记，留空保留原值）
 
 ### 修复
 
 - **OAuth token 刷新失效后不再触发授权**（JSON 保存/重启后 OAuth 服务器连接失败且不弹浏览器）：根因是 OAuth client（client_id）未持久化——每次进程重新动态注册新 client，token 刷新被服务器以 `client_id mismatch` 拒绝，且 SDK 要求的 `invalidateCredentials` 未实现导致 token 无法清除、重试仍失败。修复：client 信息随 token 持久化（凭据文档），并实现 `invalidateCredentials`，失效后自动进入新的浏览器授权流程
+- **表单保存/测试在未提交 env 时误报 "env is not iterable"**：host 对 `request.env` 的所有迭代补 `?? []` 兜底（未提交则保留已有 env）
+- **JSON 应用后列表状态未刷新**：挂载为异步，应用后立即刷新并追加 2s/6s 延迟刷新，「连接中」自动变为「已连接」
 
 ## [1.3.0] - 2026-08-16
 

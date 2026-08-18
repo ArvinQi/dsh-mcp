@@ -9,6 +9,10 @@
 
 ## [Unreleased]
 
+### 新增
+
+- **进程环境变量改为 process.env 同名取值**：环境变量模块只登记变量名，不再存储值——请求头替换时直接从进程环境变量（`process.env`）按同名取真实值；模块显示每个变量的「已设置/未设置」状态（值是否存在）
+
 ### 修复
 
 - **OAuth 授权页报 `redirect_uri_mismatch`**：回调端口原先每次进程随机生成，而持久化的 OAuth client 的 `redirect_uris` 在注册时固定——重启后新回调地址与注册地址不一致，CAS 拒绝授权。修复：回调端口按 serverName 稳定派生；`clientInformation()` 校验持久化 client 的 `redirect_uris` 是否覆盖当前回调地址，不匹配则丢弃并重新注册

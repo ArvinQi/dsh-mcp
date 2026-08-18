@@ -18,7 +18,7 @@
 
 .row {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.8fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 8px;
 }
@@ -45,29 +45,22 @@
   width: 100%;
 }
 
-.value {
-  width: 100%;
-}
-
-.secretToggle {
+.statusBadge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  color: var(--dsw-alias-label-secondary);
+  min-height: 20px;
+  border-radius: 5px;
+  padding: 1px 8px;
   font-size: 12px;
   line-height: 18px;
   white-space: nowrap;
-  cursor: pointer;
-  user-select: none;
+  color: var(--dsw-alias-label-tertiary);
+  background: var(--dsw-alias-bg-layer-1);
 }
 
-.secretToggle input {
-  cursor: pointer;
-}
-
-.secretToggle.secretOn {
-  color: var(--dsw-alias-brand-primary);
-  font-weight: 600;
+.statusBadge.statusOn {
+  color: var(--dsw-alias-state-success-primary);
+  background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 12%, transparent);
 }
 
 .danger {

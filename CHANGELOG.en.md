@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Process env vars now read from process.env by name**: the env-vars module only registers variable names — no values are stored; header substitution reads the live value from `process.env` under the same name, and the module shows a Set/Unset status per variable
+
 ### Fixed
 
 - **OAuth authorization page rejected with `redirect_uri_mismatch`**: the loopback port used to be random per process while the persisted OAuth client's `redirect_uris` are fixed at registration — after a restart the new callback address no longer matched, so the CAS server refused authorization. Fixed by deriving a stable port from the server name and validating in `clientInformation()` that the persisted client's `redirect_uris` cover the current callback, dropping it (and re-registering) otherwise

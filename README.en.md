@@ -177,9 +177,14 @@ Check in order:
 
 **Process env vars** (below the injection mode, expanded by default):
 
-- Configure global key-value pairs referenced by every server's header substitution;
-  secret values are stored in the credentials document, a blank value keeps the stored one
-- Batch-add (paste one `NAME=value` per line) or add rows one by one
+- Register the **variable names** referenced by every server's header substitution
+  (no values are stored here); each variable shows a Set/Unset status
+  (whether the value exists in the process environment)
+- Substitution **reads the live value from `process.env` under the same name** — export the
+  variables in your system / startup script first (e.g. `export ADA_TOKEN=...`), then
+  restart `dsh web`
+- Batch-add (paste one `NAME` or `NAME=value` per line; only the name is kept) or add rows
+  one by one
 - A header value can reference a variable by **bare name** or **`${NAME}`** (e.g. `Authorization: Bearer ${GITLAB_TOKEN}`),
   substituted at connect time (priority: server env > process-level env > system environment)
 

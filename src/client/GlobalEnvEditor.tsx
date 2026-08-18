@@ -1,8 +1,8 @@
 /**
- * Process-level environment-variable editor: a global key-value list shared
- * by every MCP server's header substitution. Values are referenced from
- * server headers as `${NAME}` or by bare name; secret values are stored in
- * the credentials document and never shown back.
+ * Process-level environment-variable editor: registers the variable names the
+ * plugin may substitute into server headers. Values are never stored — they
+ * are read from the process environment (process.env) by the same name at
+ * connect time, so the editor is a name registry plus a live status check.
  * @module dsh-mcp/client/GlobalEnvEditor
  */
 
@@ -15,17 +15,15 @@ import css from './GlobalEnvEditor.module.css'
 interface EnvRowDraft {
   readonly key: string
   name: string
-  secret: boolean
-  value: string
   configured: boolean
 }
 
 /** Host Remote face required by the editor. */
 export interface GlobalEnvRemote {
-  /** Read the process-level env rows. */
+  /** Read the registered variable names. */
   envList: () => Promise<{ vars: readonly McpEnvVarView[] }>
-  /** Replace the whole process-level env table. */
-  envSet: (vars: readonly { name: string; secret?: boolean; value?: string }[]) => Promise<{ vars: readonly McpEnvVarView[] }>
+  /** Replace the whole registration (names only; values come from process.env). */
+  envSet: (vars: readonly { name: string }[]) => Promise<{ vars: readonly McpEnvVarView[] }>
 }
 
 /** Props for the process env editor panel. */
@@ -43,7 +41,7 @@ function nextKey(): string {
 }
 
 function emptyRow(): EnvRowDraft {
-  return { key: nextKey(), name: '', secret: true, value: '', configured: false }
+  return { key: nextKey(), name: '', configured: false }
 }
 
 /** Render the process-level environment-variable editor panel. */
@@ -67,8 +65,6 @@ export function GlobalEnvEditor({ injected, t, onApplied }: GlobalEnvEditorProps
         setRows(state.vars.map(row => ({
           key: nextKey(),
           name: row.name,
-          secret: row.secret,
-          value: '',
           configured: row.configured,
         })))
         setLoaded(true)
@@ -98,7 +94,7 @@ export function GlobalEnvEditor({ injected, t, onApplied }: GlobalEnvEditorProps
     setRows(prev => [...prev, emptyRow()])
   }
 
-  /** Parse "NAME=value" lines (one per line) into fresh draft rows. */
+  /** Parse lines (one per line) into variable-name rows. */
   const applyBulk = (): void => {
     const parsed = bulkText.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0)
     if (parsed.length === 0) {
@@ -108,14 +104,9 @@ export function GlobalEnvEditor({ injected, t, onApplied }: GlobalEnvEditorProps
     const next: EnvRowDraft[] = []
     for (const line of parsed) {
       const eq = line.indexOf('=')
-      if (eq <= 0) {
-        next.push({ key: nextKey(), name: line, secret: false, value: '', configured: false })
-        continue
-      }
-      const name = line.slice(0, eq).trim()
-      const value = line.slice(eq + 1)
+      const name = (eq > 0 ? line.slice(0, eq) : line).trim()
       if (name.length === 0) continue
-      next.push({ key: nextKey(), name, secret: false, value, configured: false })
+      next.push({ key: nextKey(), name, configured: false })
     }
     if (next.length > 0) setRows(prev => [...prev, ...next])
     setBulkOpen(false)
@@ -123,17 +114,11 @@ export function GlobalEnvEditor({ injected, t, onApplied }: GlobalEnvEditorProps
   }
 
   const save = (): void => {
-    const vars: Array<{ name: string; secret?: boolean; value?: string }> = []
+    const vars: Array<{ name: string }> = []
     const seen = new Set<string>()
     for (const row of rows) {
       const name = row.name.trim()
-      if (name.length === 0) {
-        if (row.value.trim().length > 0) {
-          setError('存在未填写变量名的行')
-          return
-        }
-        continue // 空行跳过
-      }
+      if (name.length === 0) continue // 空行跳过
       if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
         setError(`变量名 "${name}" 必须是字母/数字/下划线，且以字母或下划线开头`)
         return
@@ -143,20 +128,20 @@ export function GlobalEnvEditor({ injected, t, onApplied }: GlobalEnvEditorProps
         return
       }
       seen.add(name)
-      vars.push({
-        name,
-        secret: row.secret,
-        // 填了值就提交（secret 也会写入凭据文档）；留空不提交（secret 保留原值）
-        ...(row.value.trim().length > 0 ? { value: row.value } : {}),
-      })
+      vars.push({ name })
     }
     const seq = ++seqRef.current
     setBusy(true)
     setError(null)
     setNotice(null)
     void injected.envSet(vars).then(
-      () => {
+      (state) => {
         if (seq !== seqRef.current) return
+        setRows(state.vars.map(row => ({
+          key: nextKey(),
+          name: row.name,
+          configured: row.configured,
+        })))
         setNotice(t('globalEnvDone'))
         onApplied()
       },
@@ -183,23 +168,9 @@ export function GlobalEnvEditor({ injected, t, onApplied }: GlobalEnvEditorProps
             aria-label={t('globalEnvName')}
             onChange={(event) => update(row.key, { name: event.currentTarget.value })}
           />
-          <input
-            type={row.secret ? 'password' : 'text'}
-            className={css.value}
-            value={row.value}
-            placeholder={row.secret && row.configured ? '••••••••' : t('globalEnvValue')}
-            aria-label={t('globalEnvValue')}
-            onChange={(event) => update(row.key, { value: event.currentTarget.value })}
-          />
-          <label className={`${css.secretToggle} ${row.secret ? css.secretOn : ''}`} title={t('globalEnvSecretHint')}>
-            <input
-              type="checkbox"
-              checked={row.secret}
-              aria-label={t('globalEnvSecret')}
-              onChange={(event) => update(row.key, { secret: event.currentTarget.checked })}
-            />
-            {t('globalEnvSecret')}
-          </label>
+          <span className={`${css.statusBadge} ${row.configured ? css.statusOn : ''}`}>
+            {row.configured ? t('globalEnvSet') : t('globalEnvUnset')}
+          </span>
           <button type="button" className={css.danger} aria-label={t('globalEnvRemove')} onClick={() => remove(row.key)}>
             ✕
           </button>

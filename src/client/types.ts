@@ -50,7 +50,8 @@ export interface McpServerInput {
 /** One env var as the client renders it. */
 export interface McpEnvVarView {
   readonly name: string
-  readonly secret: boolean
+  /** Legacy flag kept for wire compatibility; env vars now come from process.env. */
+  readonly secret?: boolean
   readonly configured: boolean
   /** Plain-text value of a non-secret env var (secret values never leave the Host). */
   readonly value?: string

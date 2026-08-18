@@ -11,6 +11,7 @@
 
 ### 修复
 
+- **OAuth 授权页报 `redirect_uri_mismatch`**：回调端口原先每次进程随机生成，而持久化的 OAuth client 的 `redirect_uris` 在注册时固定——重启后新回调地址与注册地址不一致，CAS 拒绝授权。修复：回调端口按 serverName 稳定派生；`clientInformation()` 校验持久化 client 的 `redirect_uris` 是否覆盖当前回调地址，不匹配则丢弃并重新注册
 - **OAuth 过期 token 导致静默连接失败**（不弹浏览器）：access_token 过期且 refresh_token 也失效时，SDK 抛 `InvalidTokenError` 且不做失效重试，直接连接失败。修复：provider 的 `tokens()` 解析 access_token 的 JWT `exp`，过期即清除凭据，SDK 自动转入新的浏览器授权流程
 
 ## [1.4.0] - 2026-08-16

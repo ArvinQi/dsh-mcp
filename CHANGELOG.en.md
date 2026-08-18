@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **OAuth authorization page rejected with `redirect_uri_mismatch`**: the loopback port used to be random per process while the persisted OAuth client's `redirect_uris` are fixed at registration — after a restart the new callback address no longer matched, so the CAS server refused authorization. Fixed by deriving a stable port from the server name and validating in `clientInformation()` that the persisted client's `redirect_uris` cover the current callback, dropping it (and re-registering) otherwise
 - **OAuth silently failed to connect with an expired token** (no browser authorization): when the access token expired and the refresh token was also dead, the SDK threw `InvalidTokenError` without retrying, so the connection just failed. The provider's `tokens()` now reads the JWT `exp` claim and clears expired credentials, letting the SDK fall through to a fresh browser authorization flow
 
 ## [1.4.0] - 2026-08-16

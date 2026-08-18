@@ -52,12 +52,28 @@
 .secretToggle {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  color: var(--dsw-alias-label-secondary);
-  font-size: 12px;
-  line-height: 18px;
-  white-space: nowrap;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  font-size: 14px;
+  line-height: 1;
   cursor: pointer;
+  user-select: none;
+}
+
+.secretToggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.secretToggle.secretOn {
+  border-color: var(--dsw-alias-brand-primary);
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent);
 }
 
 .danger {

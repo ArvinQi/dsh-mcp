@@ -43,7 +43,7 @@ function nextKey(): string {
 }
 
 function emptyRow(): EnvRowDraft {
-  return { key: nextKey(), name: '', secret: false, value: '', configured: false }
+  return { key: nextKey(), name: '', secret: true, value: '', configured: false }
 }
 
 /** Render the process-level environment-variable editor panel. */
@@ -191,14 +191,17 @@ export function GlobalEnvEditor({ injected, t, onApplied }: GlobalEnvEditorProps
             aria-label={t('globalEnvValue')}
             onChange={(event) => update(row.key, { value: event.currentTarget.value })}
           />
-          <label className={css.secretToggle}>
+          <label
+            className={`${css.secretToggle} ${row.secret ? css.secretOn : ''}`}
+            title={t('globalEnvSecretHint')}
+          >
             <input
               type="checkbox"
               checked={row.secret}
-              title={t('globalEnvSecretHint')}
+              aria-label={t('globalEnvSecret')}
               onChange={(event) => update(row.key, { secret: event.currentTarget.checked })}
             />
-            {t('globalEnvSecret')}
+            <span aria-hidden="true">{row.secret ? '🔒' : '🔓'}</span>
           </label>
           <button type="button" className={css.danger} aria-label={t('globalEnvRemove')} onClick={() => remove(row.key)}>
             ✕

@@ -90,3 +90,33 @@ test("uses a diagnostic fallback when the routed model is not image-capable", as
 	assert.match(output[0].text, /does not declare image input/);
 	assert.doesNotMatch(output[0].text, /AQ==/);
 });
+
+test("falls back safely when attachment storage rejects an image", async () => {
+	const { prepareImageProjection } = await loadImageProjection();
+	const ctx = {
+		get(name) {
+			if (name === "attachments") return { saveImages: async () => { throw new Error("storage unavailable"); } };
+			if (name === "llm") return { resolveModelInfo: async () => ({ inputModalities: ["image"] }) };
+			return undefined;
+		}
+	};
+	const output = await prepareImageProjection(ctx, createExec(), [
+		{ type: "image", mimeType: "image/png", data: "AQ==" }
+	], "camera");
+	assert.equal(output[0].type, "text");
+	assert.match(output[0].text, /durable image storage rejected the result/);
+	assert.doesNotMatch(output[0].text, /AQ==/);
+});
+
+test("keeps audio and resource fallbacks bounded", async () => {
+	const { projectContent } = await loadImageProjection();
+	const output = projectContent([
+		{ type: "audio", mimeType: "audio/wav", data: "raw-audio" },
+		{ type: "resource", resource: { blob: "raw-resource" } }
+	], "multimedia");
+	assert.equal(output.length, 1);
+	assert.equal(output[0].type, "text");
+	assert.match(output[0].text, /audio result unsupported/);
+	assert.match(output[0].text, /embedded resource unsupported/);
+	assert.doesNotMatch(output[0].text, /raw-audio|raw-resource/);
+});

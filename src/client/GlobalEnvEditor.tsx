@@ -146,7 +146,8 @@ export function GlobalEnvEditor({ injected, t, onApplied }: GlobalEnvEditorProps
       vars.push({
         name,
         secret: row.secret,
-        ...(row.secret ? {} : row.value.trim().length > 0 ? { value: row.value } : {}),
+        // 填了值就提交（secret 也会写入凭据文档）；留空不提交（secret 保留原值）
+        ...(row.value.trim().length > 0 ? { value: row.value } : {}),
       })
     }
     const seq = ++seqRef.current

@@ -7,6 +7,12 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased]
+
+### 修复
+
+- **OAuth 过期 token 导致静默连接失败**（不弹浏览器）：access_token 过期且 refresh_token 也失效时，SDK 抛 `InvalidTokenError` 且不做失效重试，直接连接失败。修复：provider 的 `tokens()` 解析 access_token 的 JWT `exp`，过期即清除凭据，SDK 自动转入新的浏览器授权流程
+
 ## [1.4.0] - 2026-08-16
 
 ### 新增

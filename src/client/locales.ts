@@ -84,7 +84,7 @@ export const zh = {
   globalEnvHint: '进程级环境变量，供所有 MCP 服务器的请求头替换引用（headers 值写 ${变量名} 或直接写变量名）。secret 值写入凭据文档，不在此明文显示；留空保留原值。',
   globalEnvName: '变量名',
   globalEnvValue: '值',
-  globalEnvSecret: 'secret',
+  globalEnvSecret: '私密',
   globalEnvSecretHint: '值只写，保存后不可见；留空表示保留原值',
   globalEnvAdd: '添加变量',
   globalEnvBulk: '批量添加',

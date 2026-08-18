@@ -118,12 +118,55 @@ Append to `$DSH_HOME/profiles/web/cordis.patch.yml` (`$DSH_HOME` defaults to `~/
       name: dsh-mcp
 ```
 
-Then **restart `dsh web`** (client roster changes require a restart); afterwards hard-refresh the browser
-(`Cmd/Ctrl + Shift + R`) to load the settings page.
+> ⚠️ **This step is mandatory**: dsh-mcp does not declare `dsh.bundle`, so `dsh plugin add` only
+> installs the package into the profile — **it does not activate the plugin**. Without the
+> registration row the plugin never mounts.
+
+Then **restart `dsh web`** and **hard-refresh the browser** (`Cmd/Ctrl + Shift + R`):
+
+> ⚠️ **Both the restart and the hard refresh are required**:
+> - The settings page (client half) needs the **client roster**, and roster changes only take
+>   effect after **restarting `dsh web`** (refreshing the browser alone is not enough);
+> - After the restart you must **hard-refresh** (`Cmd/Ctrl + Shift + R`) — a normal reload may
+>   keep serving the cached old page.
 
 ### 3. Usage
 
 **Open the management page**: after restart, open DSH Web → **Settings → MCP**.
+
+### 4. Troubleshooting
+
+**Q1: No "MCP" entry in Settings after installing?**
+
+Check in order:
+
+1. **Is the plugin registered?** Confirm `$DSH_HOME/profiles/web/cordis.patch.yml` has the
+   `- insert: [{ id: dsh-mcp, name: dsh-mcp }]` row (`id`/`name` must exactly match the package
+   name `dsh-mcp`). `dsh plugin add` does not equal activation — **without the registration row
+   the plugin never mounts**.
+2. **Did you restart `dsh web`?** Refreshing the browser is not enough — the settings entry comes
+   from the client roster, and roster changes require **restarting the process**.
+3. **Did you hard-refresh the browser?** After the restart use `Cmd/Ctrl + Shift + R`
+   (Windows/Linux: `Ctrl + Shift + R`); a plain `F5` may load a cached old page.
+4. **Is it installed in the right profile?** Make sure both the install and the registration use
+   the `web` profile (`dsh plugin --profile web add dsh-mcp` +
+   `$DSH_HOME/profiles/web/cordis.patch.yml`); other profiles have their own settings pages.
+5. **Is it the latest version?** npm metadata caching can pin an old version; force the version
+   with `dsh plugin --profile web add dsh-mcp@latest` (or `@1.4.0`).
+
+**Q2: "MCP" is visible but the server list is empty or errors?**
+
+- Check the `dsh web` process log for `mcp-manager` initialization errors;
+- After upgrading the plugin, restart and **hard-refresh** so the old client bundle does not
+  mix with the new host (typical symptom: `client api: ... 404` or `env is not iterable` — both
+  come from mixing versions).
+
+**Q3: MCP tools do not show up in an agent session?**
+
+- Make sure the server status is "Connected" and its tools are checked (all checked by default);
+- In "On-demand search" mode the model discovers tools via `mcp_tool_search` and hot-injects them,
+  so tools not searched are absent from the system prompt by design; switch to "Full injection"
+  to verify.
 
 **Add a server**:
 

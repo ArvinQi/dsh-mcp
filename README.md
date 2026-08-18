@@ -105,12 +105,49 @@ dsh plugin --profile web add link:<本仓库绝对路径>
       name: dsh-mcp
 ```
 
-然后**重启 `dsh web`**（client roster 变更需重启）；之后浏览器硬刷新（`Cmd/Ctrl + Shift + R`）
-加载设置页。
+> ⚠️ **这一步必须手动完成**：dsh-mcp 未声明 `dsh.bundle`，`dsh plugin add` 只负责把包装进
+> profile，**不会自动进入运行组合**。漏掉注册行则插件完全不生效。
+
+然后**重启 `dsh web`**，并**硬刷新浏览器**（`Cmd/Ctrl + Shift + R`）：
+
+> ⚠️ **重启 + 硬刷新缺一不可**：
+> - 设置页（client 半部）需要 **client roster** 生效，**插件集变更必须重启 `dsh web`**（刷新浏览器不够）；
+> - 重启后浏览器必须**硬刷新**（`Cmd/Ctrl + Shift + R`），普通刷新可能仍使用缓存的旧页面。
 
 ### 3. 使用
 
 **打开管理页**：重启后浏览器打开 DSH Web → **设置（Settings）→ MCP**。
+
+### 4. 常见问题排查
+
+**Q1：安装后设置页看不到「MCP」？**
+
+按顺序检查：
+
+1. **是否已注册插件行**：确认 `$DSH_HOME/profiles/web/cordis.patch.yml` 已追加
+   `- insert: [{ id: dsh-mcp, name: dsh-mcp }]`（`id`/`name` 必须与插件包名 `dsh-mcp` 完全一致）。
+   `dsh plugin add` 不等于生效，**没有注册行插件不会挂载**。
+2. **是否重启了 `dsh web`**：仅刷新浏览器不够——设置页入口来自 client roster，
+   插件集变更必须**重启进程**才进入 roster。
+3. **是否硬刷新了浏览器**：重启后用 `Cmd/Ctrl + Shift + R`（Windows/Linux：`Ctrl + Shift + R`）
+   强制刷新；普通 `F5` 可能加载缓存的旧页面。
+4. **是否装到了正确的 profile**：确认安装与注册都在 `web` profile
+   （`dsh plugin --profile web add dsh-mcp` + `$DSH_HOME/profiles/web/cordis.patch.yml`）；
+   装到其他 profile 则在其他 profile 的设置页查看。
+5. **是否为最新版本**：npm 元数据缓存可能导致装到旧版，可强制指定版本
+   `dsh plugin --profile web add dsh-mcp@latest`（或 `@1.4.0`）。
+
+**Q2：设置页能看到「MCP」，但服务器列表为空/报错？**
+
+- 确认 `dsh web` 进程日志中 `mcp-manager` 没有初始化错误；
+- 若升级过插件，请重启后**硬刷新**，避免旧 client bundle 与新版 host 不匹配
+  （典型现象：操作报 `client api: ... 404` 或 `env is not iterable`，都是新旧版本混用所致）。
+
+**Q3：MCP 工具没有出现在 agent 会话里？**
+
+- 确认对应服务器状态为「已连接」且工具已勾选（默认全选）；
+- 注入模式为「按需检索」时，模型会通过 `mcp_tool_search` 检索后热注入，未检索到的工具不在
+  系统提示词中属正常现象；可切换到「全量注入」验证。
 
 **添加服务器**：
 

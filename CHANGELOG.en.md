@@ -7,7 +7,7 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.5.0] - 2026-08-17
 
 ### Added
 
@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **OAuth authorization page rejected with `redirect_uri_mismatch`**: the loopback port used to be random per process while the persisted OAuth client's `redirect_uris` are fixed at registration — after a restart the new callback address no longer matched, so the CAS server refused authorization. Fixed by deriving a stable port from the server name and validating in `clientInformation()` that the persisted client's `redirect_uris` cover the current callback, dropping it (and re-registering) otherwise
 - **OAuth silently failed to connect with an expired token** (no browser authorization): when the access token expired and the refresh token was also dead, the SDK threw `InvalidTokenError` without retrying, so the connection just failed. The provider's `tokens()` now reads the JWT `exp` claim and clears expired credentials, letting the SDK fall through to a fresh browser authorization flow
+- **OAuth token exchange failed with `code, code_verifier, client_id, redirect_uri are required`**: when the client was loaded from persistence the in-memory closure was null, so the token request lacked `client_id`. The exchange now reads client info and code verifier through the provider accessors (memory first, persistence fallback)
+- **OAuth concurrent authorization port collision**: with a stable callback port, a mount and a test connection authorizing at the same time collided on the port (EADDRINUSE). Authorization flows are now serialized per server
+- **Env-variable secret values were not persisted**: the editor dropped the value for secret rows. Filled values are now submitted (secret values go to the credentials document); a blank value keeps the stored one
 
 ## [1.4.0] - 2026-08-16
 

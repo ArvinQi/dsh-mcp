@@ -7,6 +7,12 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased]
+
+### 新增
+
+- **MCP 工具图片结果**：工具返回的图片内容（image blocks）经附件服务投影为图片引用进入模型上下文，带严格的类型/大小/数量预检与降级文案；非图片内容（audio/resource 等）给出有界文本回退（PR #4，感谢 @coding-chong）
+
 ## [1.5.0] - 2026-08-17
 
 ### 新增

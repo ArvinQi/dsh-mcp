@@ -7,6 +7,12 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **MCP tool image results**: image content blocks returned by MCP tools are projected through the attachment service into model image context, with strict type/size/count preflight and degraded text fallbacks; non-image content (audio/resource etc.) gets bounded text fallbacks (PR #4, thanks @coding-chong)
+
 ## [1.5.0] - 2026-08-17
 
 ### Added

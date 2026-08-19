@@ -243,7 +243,7 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_envList_result$schema = z.object({
   'ok': z.literal(true).readonly(),
   'vars': z.array(z.object({
   'name': z.string().readonly(),
-  'secret': z.boolean().readonly().optional(),
+  'secret': z.boolean().readonly(),
   'configured': z.boolean().readonly(),
   'value': z.string().readonly().optional(),
 })).readonly(),

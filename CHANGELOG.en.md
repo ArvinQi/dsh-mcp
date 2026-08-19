@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Process env vars now read from process.env by name**: the env-vars module only registers variable names — no values are stored; header substitution reads the live value from `process.env` under the same name, and the module shows a Set/Unset status per variable
+- **Process env vars now prefer process.env by name**: when a variable exists in process.env its value is used verbatim (name unchanged) and stored values act as fallback; the UI is unchanged (value input and secret retained), and non-secret variables display the process.env value
 
 ### Fixed
 

@@ -18,6 +18,7 @@
 - **Process-level environment variables**: a global key-value list (expanded by default, batch-add supported); header values can reference a variable by bare name or `${NAME}` and are substituted at connect time (e.g. `Authorization: Bearer ${TOKEN}`)
 - **Whole-list JSON config**: the "JSON config editor" panel views/edits every server as one JSON array; applying saves immediately (create/update/delete)
 - **Fine-grained tool control**: expand each server to see its tools, all checked by default; uncheck to load only what you need
+- **Image result passthrough**: images returned by MCP tools (screenshots/charts) are projected through the attachment service into model image context, with strict preflight and bounded fallbacks (PR #4)
 - **Two injection modes**: `search` (on-demand, token-saving) and `full` (inject everything)
 - **Zero npm dependencies**: plugs into DeepSeek Harness internals, install and go
 - **OAuth authentication**: for `streamable-http` servers using MCP OAuth (authorization-code + PKCE), the browser opens automatically for authorization on connect; tokens and OAuth client info are persisted and refreshed automatically by the SDK (auto-renewed while active within 24h), with automatic re-authorization after expiry
@@ -152,7 +153,7 @@ Check in order:
    the `web` profile (`dsh plugin --profile web add dsh-mcp` +
    `$DSH_HOME/profiles/web/cordis.patch.yml`); other profiles have their own settings pages.
 5. **Is it the latest version?** npm metadata caching can pin an old version; force the version
-   with `dsh plugin --profile web add dsh-mcp@latest` (or `@1.5.0`).
+   with `dsh plugin --profile web add dsh-mcp@latest` (or `@1.6.0`).
 
 **Q2: "MCP" is visible but the server list is empty or errors?**
 

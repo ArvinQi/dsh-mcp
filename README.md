@@ -20,6 +20,7 @@
 - **进程级环境变量**：全局 KV 配置（默认展开、支持批量添加），服务器请求头 value 写 `变量名` 或 `${变量名}` 即可在连接时自动替换为配置值（如 `Authorization: Bearer ${TOKEN}`）
 - **JSON 全量配置**：「JSON 维护配置」面板以一段 JSON 数组查看/编辑全部服务器配置，应用即保存（新增/更新/删除）
 - **工具级精细控制**：每个服务器展开工具列表，默认全选，可取消勾选只加载需要的部分
+- **图片结果透传**：MCP 工具返回的图片（截图/图表等）经附件服务投影为图片引用进入模型上下文，带严格预检与有界降级文案（PR #4）
 - **双注入模式**：`search`（按需检索，省 token）与 `full`（全量注入）
 - **零 npm 依赖**：直接对接 DeepSeek Harness 内部能力，安装即用
 - **OAuth 认证支持**：`streamable-http` 服务器若走 MCP OAuth（授权码 + PKCE），连接时自动打开浏览器授权；token 与 client 信息持久化、由 SDK 自动刷新（24 小时内活跃自动续期），失效后自动重新授权
@@ -135,7 +136,7 @@ dsh plugin --profile web add link:<本仓库绝对路径>
    （`dsh plugin --profile web add dsh-mcp` + `$DSH_HOME/profiles/web/cordis.patch.yml`）；
    装到其他 profile 则在其他 profile 的设置页查看。
 5. **是否为最新版本**：npm 元数据缓存可能导致装到旧版，可强制指定版本
-   `dsh plugin --profile web add dsh-mcp@latest`（或 `@1.5.0`）。
+   `dsh plugin --profile web add dsh-mcp@latest`（或 `@1.6.0`）。
 
 **Q2：设置页能看到「MCP」，但服务器列表为空/报错？**
 

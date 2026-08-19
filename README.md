@@ -135,7 +135,7 @@ dsh plugin --profile web add link:<本仓库绝对路径>
    （`dsh plugin --profile web add dsh-mcp` + `$DSH_HOME/profiles/web/cordis.patch.yml`）；
    装到其他 profile 则在其他 profile 的设置页查看。
 5. **是否为最新版本**：npm 元数据缓存可能导致装到旧版，可强制指定版本
-   `dsh plugin --profile web add dsh-mcp@latest`（或 `@1.4.0`）。
+   `dsh plugin --profile web add dsh-mcp@latest`（或 `@1.5.0`）。
 
 **Q2：设置页能看到「MCP」，但服务器列表为空/报错？**
 

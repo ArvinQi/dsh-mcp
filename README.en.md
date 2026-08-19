@@ -152,7 +152,7 @@ Check in order:
    the `web` profile (`dsh plugin --profile web add dsh-mcp` +
    `$DSH_HOME/profiles/web/cordis.patch.yml`); other profiles have their own settings pages.
 5. **Is it the latest version?** npm metadata caching can pin an old version; force the version
-   with `dsh plugin --profile web add dsh-mcp@latest` (or `@1.4.0`).
+   with `dsh plugin --profile web add dsh-mcp@latest` (or `@1.5.0`).
 
 **Q2: "MCP" is visible but the server list is empty or errors?**
 

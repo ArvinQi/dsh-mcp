@@ -17,9 +17,9 @@ async function loadImageProjection() {
 		const MAX_TIMER_DELAY_MS = 0;
 		const assertSupportedJsonSchema = () => {};
 		${executable}
-		return { createDefinition, decodeImage, prepareImageProjection, projectContent };
+		return { createDefinition, decodeImage, prepareImageProjection, projectContent, admissionDiagnostic };
 	`);
-	return factory(Buffer, () => false, isDeepStrictEqual);
+	return factory(Buffer, (error) => error?.code !== undefined, isDeepStrictEqual);
 }
 
 function imageLimits(overrides = {}) {
@@ -210,4 +210,42 @@ test("finalizes only matching successful projections", async () => {
 	const errorExec = createExec();
 	const errorValue = await definition.execute({}, errorExec);
 	assert.equal(definition.finalizeContent(errorExec, { value: errorValue, content: definition.output.render({}, errorValue), isError: true }), undefined);
+});
+
+test("maps attachment admission codes to bounded diagnostics", async () => {
+	const { admissionDiagnostic } = await loadImageProjection();
+	const cases = [
+		["TOO_MANY_IMAGES", "image batch exceeds the active count limit"],
+		["IMAGES_TOO_LARGE", "image batch exceeds the active size limit"],
+		["IMAGE_TOO_LARGE", "image exceeds the active size limit"],
+		["UNSUPPORTED_IMAGE_TYPE", "image type is not accepted"],
+		["IMAGE_TYPE_MISMATCH", "declared image type does not match image bytes"],
+		["INVALID_IMAGE_BASE64", "invalid image Base64"],
+		["INVALID_IMAGE", "malformed or unsupported image data"],
+		["IMAGE_TOO_MANY_PIXELS", "image exceeds the decoded-pixel limit"],
+		["IMAGE_DIMENSION_TOO_LARGE", "image exceeds the maximum side dimension"]
+	];
+	for (const [code, reason] of cases) assert.equal(admissionDiagnostic({ code }), reason, code);
+	assert.equal(admissionDiagnostic(new Error("storage secret")), "image storage unavailable");
+});
+
+test("projects dimension admission failures without leaking storage details", async () => {
+	const { prepareImageProjection } = await loadImageProjection();
+	const output = await prepareImageProjection({
+		get(name) {
+			if (name === "attachments") return {
+				imageLimits: imageLimits(),
+				async saveImages() {
+					throw Object.assign(new Error("private attachment path"), { code: "IMAGE_DIMENSION_TOO_LARGE" });
+				}
+			};
+			if (name === "llm") return { resolveModelInfo: async () => ({ inputModalities: ["image"] }) };
+			return undefined;
+		}
+	}, createExec(), [
+		{ type: "image", mimeType: "image/png", data: "AQ==" }
+	], "camera");
+	assert.equal(output.length, 1);
+	assert.match(output[0].text, /maximum side dimension/);
+	assert.doesNotMatch(output[0].text, /private attachment path/);
 });

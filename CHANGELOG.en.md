@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OAuth token exchange failed with `code, code_verifier, client_id, redirect_uri are required`**: when the client was loaded from persistence the in-memory closure was null, so the token request lacked `client_id`. The exchange now reads client info and code verifier through the provider accessors (memory first, persistence fallback)
 - **OAuth concurrent authorization port collision**: with a stable callback port, a mount and a test connection authorizing at the same time collided on the port (EADDRINUSE). Authorization flows are now serialized per server
 - **Env-variable secret values were not persisted**: the editor dropped the value for secret rows. Filled values are now submitted (secret values go to the credentials document); a blank value keeps the stored one
+- **MCP image admission diagnostics no longer misreport failures**: distinguish image count, batch/per-image byte, MIME, Base64, raster, decoded-pixel, and maximum-dimension limits; unknown admission errors use a fixed diagnostic so valid-but-oversized images are not reported as invalid image data and attachment storage internals are not leaked
 
 ## [1.4.0] - 2026-08-16
 

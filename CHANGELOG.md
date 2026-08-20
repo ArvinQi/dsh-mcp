@@ -26,6 +26,7 @@
 - **OAuth token 交换报 `code, code_verifier, client_id, redirect_uri are required`**：client 从持久化读取时内存闭包为 null，token 请求缺 `client_id`。修复：exchange 改用 provider 访问器（内存优先、持久化回退）
 - **OAuth 并发授权端口冲突**：回调端口稳定后，挂载与测试连接同时授权会抢同一端口（EADDRINUSE）。修复：同服务器授权流程串行化
 - **环境变量 secret 值未写入凭据**：编辑器保存 secret 行时丢弃了值。修复：填写值即提交（secret 写入凭据文档），留空保留原值
+- **MCP 图片 admission 诊断不再误报**：区分图片数量、批量/单图字节数、MIME 类型、Base64、图片格式、解码像素数和最大边长限制；未知 admission 错误使用固定诊断，避免把有效但超尺寸的图片误报为无效图片数据，也不泄露 attachment 存储内部错误
 
 ## [1.4.0] - 2026-08-16
 

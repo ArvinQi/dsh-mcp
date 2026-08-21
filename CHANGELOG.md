@@ -7,6 +7,12 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased]
+
+### 新增
+
+- **JSON 配置编辑器改为 key-value 格式**：服务器配置以「服务器名 → 配置对象」的 JSON 对象展示/编辑（`{ "服务器名": { "type": "streamable_http", "url": ..., "headers": {...}, "disabled": false } }`），替代原数组格式；`type` 取值 `streamable_http`/`stdio`，`disabled: true` 表示停用
+
 ## [1.7.0] - 2026-08-21
 
 ### 修复

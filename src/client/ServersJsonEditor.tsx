@@ -1,23 +1,25 @@
 /**
  * JSON server-config editor: view and edit the whole MCP server list as one
- * JSON document. The document is an array of server definitions (the same
- * shape the add/edit form submits); applying it replaces the whole list —
- * listed servers are created or updated, existing servers absent from the
- * document are removed. Secret env values are never exported (a `configured`
- * flag marks them) and a blank secret value keeps the stored one.
+ * key-value JSON document (server name → config). Applying it replaces the
+ * whole list — listed servers are created or updated, existing servers
+ * absent from the document are removed. Secret env values are never
+ * exported (a `configured` flag marks them) and a blank secret value keeps
+ * the stored one.
  *
- *   [
- *     {
- *       "serverName": "feishu-mcp",
- *       "transport": "streamable-http",
- *       "enabled": true,
+ *   {
+ *     "feishu-mcp": {
+ *       "type": "streamable_http",
  *       "url": "https://.../mcp",
  *       "headers": { "Authorization": "Bearer ..." },
- *       "toolCallTimeoutMs": 60000,
- *       "failOnStartupError": true,
- *       "env": []
+ *       "disabled": false
+ *     },
+ *     "local": {
+ *       "type": "stdio",
+ *       "command": "npx",
+ *       "args": ["-y", "some-server"],
+ *       "disabled": false
  *     }
- *   ]
+ *   }
  * @module dsh-mcp/client/ServersJsonEditor
  */
 
@@ -48,13 +50,13 @@ export interface ServersJsonEditorProps {
   readonly onApplied: () => void
 }
 
-/** Serialize the current server list into the JSON document text. */
+/** Serialize the current server list into the JSON document text (key-value). */
 export function serversToJsonText(servers: readonly McpServerView[]): string {
-  const document = servers.map((server) => {
+  const document: Record<string, Record<string, unknown>> = {}
+  for (const server of servers) {
     const entry: Record<string, unknown> = {
-      serverName: server.serverName,
-      transport: server.transport,
-      enabled: server.enabled,
+      type: server.transport === 'stdio' ? 'stdio' : 'streamable_http',
+      disabled: !server.enabled,
     }
     if (server.transport === 'stdio') {
       entry.command = server.command
@@ -71,8 +73,8 @@ export function serversToJsonText(servers: readonly McpServerView[]): string {
     entry.env = server.env.map(row => row.secret
       ? { name: row.name, secret: true, configured: row.configured }
       : { name: row.name, secret: false, ...(row.value !== undefined && row.value.length > 0 ? { value: row.value } : {}) })
-    return entry
-  })
+    document[server.serverName] = entry
+  }
   return `${JSON.stringify(document, null, 2)}\n`
 }
 
@@ -84,40 +86,38 @@ export function parseServersJson(text: string): { ok: true; servers: readonly Se
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : String(error) }
   }
-  if (!Array.isArray(value)) {
-    return { ok: false, error: 'JSON 顶层必须是服务器配置数组：[ { serverName, transport, ... }, ... ]' }
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return { ok: false, error: 'JSON 顶层必须是对象：{ "服务器名": { "type": "streamable_http", ... } }' }
   }
-  if (value.length === 0) {
+  const entries = Object.entries(value as Record<string, unknown>)
+  if (entries.length === 0) {
     return { ok: false, error: '配置列表不能为空' }
   }
   const servers: ServersJsonEntry[] = []
-  const seen = new Set<string>()
-  for (const item of value) {
-    if (item === null || typeof item !== 'object' || Array.isArray(item)) {
-      return { ok: false, error: '每个条目必须是对象：{ serverName, transport, ... }' }
+  for (const [serverName, raw] of entries) {
+    if (serverName.trim().length === 0) return { ok: false, error: '服务器名不能为空' }
+    if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
+      return { ok: false, error: `服务器 "${serverName}" 的配置必须是对象` }
     }
-    const server = item as Record<string, unknown>
-    const serverName = typeof server.serverName === 'string' ? server.serverName.trim() : ''
-    if (serverName.length === 0) return { ok: false, error: 'serverName 不能为空' }
-    if (seen.has(serverName)) return { ok: false, error: `serverName "${serverName}" 重复` }
-    seen.add(serverName)
-    const transport = server.transport
-    if (transport !== 'stdio' && transport !== 'streamable-http') {
-      return { ok: false, error: `服务器 "${serverName}" 的 transport 必须是 stdio 或 streamable-http` }
+    const cfg = raw as Record<string, unknown>
+    const type = cfg.type
+    const transport = type === 'stdio' ? 'stdio' : type === 'streamable_http' ? 'streamable-http' : undefined
+    if (transport === undefined) {
+      return { ok: false, error: `服务器 "${serverName}" 的 type 必须是 streamable_http 或 stdio` }
     }
-    if (transport === 'stdio' && (typeof server.command !== 'string' || server.command.trim().length === 0)) {
+    if (transport === 'stdio' && (typeof cfg.command !== 'string' || cfg.command.trim().length === 0)) {
       return { ok: false, error: `服务器 "${serverName}"（stdio）缺少 command` }
     }
-    if (transport === 'streamable-http' && typeof server.url !== 'string') {
-      return { ok: false, error: `服务器 "${serverName}"（streamable-http）缺少 url` }
+    if (transport === 'streamable-http' && typeof cfg.url !== 'string') {
+      return { ok: false, error: `服务器 "${serverName}"（streamable_http）缺少 url` }
     }
-    if (server.headers !== undefined) {
-      const headers = server.headers as unknown
+    if (cfg.headers !== undefined) {
+      const headers = cfg.headers as unknown
       const okHeaders = (headers !== null && typeof headers === 'object' && !Array.isArray(headers))
         || (Array.isArray(headers) && headers.every(h => h !== null && typeof h === 'object' && typeof (h as { name?: unknown }).name === 'string'))
       if (!okHeaders) return { ok: false, error: `服务器 "${serverName}" 的 headers 必须是 { "名称": "值" } 对象或 { name, value } 数组` }
     }
-    const envValue = server.env
+    const envValue = cfg.env
     const env: unknown[] = Array.isArray(envValue) ? envValue : []
     for (const row of env) {
       const r = row as Record<string, unknown> | null
@@ -130,6 +130,20 @@ export function parseServersJson(text: string): { ok: true; servers: readonly Se
       if (r.value !== undefined && typeof r.value !== 'string') {
         return { ok: false, error: `服务器 "${serverName}" 的 env 条目 "${r.name}" 的 value 必须是字符串` }
       }
+    }
+    // Map the key-value document into the wire server shape (host upsertJson
+    // consumes serverName/transport/enabled/...).
+    const server: Record<string, unknown> = {
+      serverName,
+      transport,
+      enabled: cfg.disabled !== true,
+      command: typeof cfg.command === 'string' ? cfg.command : '',
+      args: Array.isArray(cfg.args) ? cfg.args : [],
+      cwd: typeof cfg.cwd === 'string' ? cfg.cwd : '',
+      url: typeof cfg.url === 'string' ? cfg.url : '',
+      headers: cfg.headers,
+      toolCallTimeoutMs: typeof cfg.toolCallTimeoutMs === 'number' ? cfg.toolCallTimeoutMs : 60000,
+      failOnStartupError: cfg.failOnStartupError !== false,
     }
     servers.push({ server, env })
   }

@@ -14,7 +14,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      # Zero-dependency package: no install needed, syntax smoke only.
+      # Zero-dependency package: run focused regression tests and syntax smoke checks.
+      - run: npm test
       - run: node --check lib/index.js
       - run: node --check lib/client.js
       - run: node --check scripts/build.mjs

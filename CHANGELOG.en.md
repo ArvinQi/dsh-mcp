@@ -7,6 +7,12 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **OAuth authorization UX**: mounts no longer open the browser (they fail with guidance when authorization is needed; only Test connection auto-opens the browser); tool calls with a missing/expired token return a **clickable authorization link** (a background callback listener on the stable port completes the flow; concurrent calls reuse the same pending flow); a global authorization queue keeps at most one flow active at a time
+
 ## [1.7.0] - 2026-08-21
 
 ### Added

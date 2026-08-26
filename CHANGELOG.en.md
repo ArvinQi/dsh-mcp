@@ -9,9 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-08-26
+
 ### Added
 
 - **OAuth authorization UX**: mounts no longer open the browser (they fail with guidance when authorization is needed; only Test connection auto-opens the browser); tool calls with a missing/expired token return a **clickable authorization link** (a background callback listener on the stable port completes the flow; concurrent calls reuse the same pending flow); a global authorization queue keeps at most one flow active at a time
+- **stdio form argument input**: arguments now parse shell-style (space/newline separated, with quote, escape, and explicit empty-argument support) so a command line pastes directly (e.g. `-y @modelcontextprotocol/server-filesystem /path/to/dir`); the args box shows a live parsed-argument preview so split mistakes surface before saving
+
+### Fixed
+
+- **stdio working-directory pitfall**: the form now explains that an empty cwd inherits the Host working directory and that a pnpm workspace there can make npx and similar commands resolve the wrong local package; the hint carries no concrete path, leaving the value to the user
 
 ## [1.7.0] - 2026-08-21
 

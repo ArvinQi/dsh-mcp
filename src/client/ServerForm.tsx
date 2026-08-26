@@ -3,6 +3,7 @@ import type { McpManagerFailure, McpServerId, McpServerView } from './types.ts'
 import type {
   McpDraft, McpTestOutcome,
 } from './mcp-store.ts'
+import { parseArgs } from './mcp-store.ts'
 import type { McpSettingsLocaleKey } from './locales.ts'
 import css from './ServerForm.module.css'
 
@@ -168,11 +169,17 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
           <label className={css.field}>
             <span>{t('args')}</span>
             <textarea
-              rows={2}
+              rows={3}
               value={draft.argsText}
               placeholder={t('argsPlaceholder')}
               onChange={(event) => update({ argsText: event.currentTarget.value })}
             />
+            {(() => {
+              const parsed = parseArgs(draft.argsText)
+              if (parsed.length === 0) return <span className={css.muted}>{t('argsPreviewEmpty')}</span>
+              const shown = parsed.map(arg => arg.length > 48 ? `${arg.slice(0, 45)}…` : arg).join(' | ')
+              return <span className={css.muted}>{t('argsPreview')}: {parsed.length} · {shown}</span>
+            })()}
           </label>
           <label className={css.field}>
             <span>{t('cwd')}</span>
@@ -182,6 +189,7 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
               placeholder={t('cwdPlaceholder')}
               onChange={(event) => update({ cwd: event.currentTarget.value })}
             />
+            <span className={css.muted}>{t('cwdHint')}</span>
           </label>
         </>
       ) : (

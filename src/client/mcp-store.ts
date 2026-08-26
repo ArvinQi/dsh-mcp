@@ -103,6 +103,67 @@ function parseLines(text: string): string[] {
   return text.split('\n').map(line => line.trim()).filter(line => line.length > 0)
 }
 
+/**
+ * Shell-style argument parsing: split on whitespace (spaces, tabs, newlines)
+ * while honoring single quotes, double quotes (with `\"` and `\\` escapes),
+ * and backslash escapes outside quotes. Unclosed quotes are tolerated: the
+ * remaining input becomes one argument. An explicitly empty quoted argument
+ * (`""` or `''`) is preserved.
+ */
+export function parseArgs(text: string): string[] {
+  const args: string[] = []
+  let current = ''
+  let quote: '"' | "'" | null = null
+  let hasToken = false
+  let i = 0
+  while (i < text.length) {
+    const ch = text[i]
+    if (quote !== null) {
+      if (ch === quote) {
+        quote = null
+        i += 1
+        continue
+      }
+      if (ch === '\\' && quote === '"' && i + 1 < text.length && (text[i + 1] === '"' || text[i + 1] === '\\')) {
+        current += text[i + 1]
+        i += 2
+        continue
+      }
+      current += ch
+      i += 1
+      continue
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch
+      hasToken = true
+      i += 1
+      continue
+    }
+    if (ch === '\\' && i + 1 < text.length) {
+      current += text[i + 1]
+      hasToken = true
+      i += 2
+      continue
+    }
+    if (ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r') {
+      if (hasToken || current.length > 0) {
+        args.push(current)
+        current = ''
+        hasToken = false
+      }
+      i += 1
+      continue
+    }
+    current += ch
+    hasToken = true
+    i += 1
+  }
+  if (quote !== null || hasToken || current.length > 0) {
+    args.push(current)
+  }
+  return args
+}
+
 /** Parse "Name: value" header lines; malformed lines are dropped. */
 function parseHeaders(text: string): Array<{ name: string; value: string }> {
   const headers: Array<{ name: string; value: string }> = []
@@ -139,7 +200,7 @@ export function draftToSubmission(draft: McpDraft): McpSubmission {
       transport: draft.transport,
       enabled: draft.enabled,
       command: draft.command.trim(),
-      args: parseLines(draft.argsText),
+      args: parseArgs(draft.argsText),
       cwd: draft.cwd.trim(),
       url: draft.url.trim(),
       headers: parseHeaders(draft.headersText),

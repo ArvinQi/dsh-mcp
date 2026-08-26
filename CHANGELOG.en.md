@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-08-26
+
 ### Added
 
 - **Mount failure now carries an authorization link**: when a mount needs OAuth authorization it no longer fails with guidance text only — the failure message includes a **clickable authorization link** (the background loopback listener stays alive, exchanges and stores tokens once the user authorizes, so the next mount/refresh succeeds)

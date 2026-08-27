@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.1] - 2026-08-27
+
+### Fixed
+
+- **OAuth authorization link was dropped from the mount failure message**: mcp-client's startup wrapper folded the underlying connect error (including the authorization link) into `cause`, but the mount failure view only shows the message, so the v1.9.0 authorization-link reminder never surfaced. Fix: fold the underlying detail into the message
+
 ## [1.9.0] - 2026-08-26
 
 ### Added

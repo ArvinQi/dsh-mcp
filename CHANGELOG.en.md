@@ -9,28 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.9.1] - 2026-08-27
-
-### Fixed
-
-- **OAuth authorization link was dropped from the mount failure message**: mcp-client's startup wrapper folded the underlying connect error (including the authorization link) into `cause`, but the mount failure view only shows the message, so the v1.9.0 authorization-link reminder never surfaced. Fix: fold the underlying detail into the message
-
-## [1.9.0] - 2026-08-26
-
-### Added
-
-- **Mount failure now carries an authorization link**: when a mount needs OAuth authorization it no longer fails with guidance text only — the failure message includes a **clickable authorization link** (the background loopback listener stays alive, exchanges and stores tokens once the user authorizes, so the next mount/refresh succeeds)
-- **New `allowBrowserOnMount` config**: `false` by default (mounts never pop the browser); set it to `true` to restore the legacy behavior (mounts open the browser for authorization). Configure it under the dsh-mcp entry in the profile's `cordis.patch.yml`
-
-## [1.8.0] - 2026-08-26
+## [1.8.0] - 2026-08-27
 
 ### Added
 
 - **OAuth authorization UX**: mounts no longer open the browser (they fail with guidance when authorization is needed; only Test connection auto-opens the browser); tool calls with a missing/expired token return a **clickable authorization link** (a background callback listener on the stable port completes the flow; concurrent calls reuse the same pending flow); a global authorization queue keeps at most one flow active at a time
-- **stdio form argument input**: arguments now parse shell-style (space/newline separated, with quote, escape, and explicit empty-argument support) so a command line pastes directly (e.g. `-y @modelcontextprotocol/server-filesystem /path/to/dir`); the args box shows a live parsed-argument preview so split mistakes surface before saving
+- **Mount failure now carries an authorization link**: when a mount needs OAuth authorization, the failure message includes a **clickable authorization link**; once the user opens it, the tokens are stored automatically — no manual trip to the settings page
+- **New `allowBrowserOnMount` config**: `false` by default (mounts never pop the browser); set it to `true` to restore the legacy behavior (mounts open the browser for authorization). Configure it under the dsh-mcp entry in the profile's `cordis.patch.yml`
+- **stdio form argument input**: arguments now parse shell-style (space/newline separated, with quote, escape, and explicit empty-argument support) so a command line pastes directly; the args box shows a live parsed-argument preview so split mistakes surface before saving
 
 ### Fixed
 
+- **OAuth authorization link was dropped from the mount failure message**: the underlying connect error (including the authorization link) used to be folded into `cause`, while the mount failure view only showed the message; the detail is now folded into the message
+- **Tools did not register automatically after OAuth authorization**: saving tokens now remounts every enabled server of that name by serverName, so tools appear without a manual refresh or restart
+- **Callback-port conflict crashed the Host**: all authorization flows now share one deduplicated per-server loopback listener and every listen has an error handler — an `EADDRINUSE` can no longer crash the DSH process
+- **Wrong `resource` parameter in the authorization link**: the link used to serialize `resource=undefined`, which the authorization server rejects; it now passes a URL object (preferring the protected-resource metadata's resource)
 - **stdio working-directory pitfall**: the form now explains that an empty cwd inherits the Host working directory and that a pnpm workspace there can make npx and similar commands resolve the wrong local package; the hint carries no concrete path, leaving the value to the user
 
 ## [1.7.0] - 2026-08-21

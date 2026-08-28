@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **OAuth authorization link was dropped from the mount failure message**: the underlying connect error (including the authorization link) used to be folded into `cause`, while the mount failure view only showed the message; the detail is now folded into the message
-- **Tools did not register automatically after OAuth authorization**: saving tokens now remounts every enabled server of that name by serverName, so tools appear without a manual refresh or restart
+- **Tools did not register automatically after OAuth authorization**: saving tokens now remounts every enabled server of that name by serverName, so tools appear without a manual refresh or restart (the listener previously subscribed to a credential event name the service never dispatches, so the remount never ran; fixed)
 - **Callback-port conflict crashed the Host**: all authorization flows now share one deduplicated per-server loopback listener and every listen has an error handler — an `EADDRINUSE` can no longer crash the DSH process
 - **Wrong `resource` parameter in the authorization link**: the link used to serialize `resource=undefined`, which the authorization server rejects; it now passes a URL object (preferring the protected-resource metadata's resource)
 - **stdio working-directory pitfall**: the form now explains that an empty cwd inherits the Host working directory and that a pnpm workspace there can make npx and similar commands resolve the wrong local package; the hint carries no concrete path, leaving the value to the user

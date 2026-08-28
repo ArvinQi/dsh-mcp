@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-08-28
+
+### Added
+
+- **Tool-list stability (better prompt-cache hits)**: tool schemas are canonicalized (recursive key sorting) before registration, so servers reordering schema keys no longer triggers dispose/re-register churn; MCP tools in the system prompt are rendered in stable name order, so the same tool set renders byte-identically no matter the hot-set or `tools/list` order
+
 ## [1.8.0] - 2026-08-27
 
 ### Added
@@ -25,7 +31,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Callback-port conflict crashed the Host**: all authorization flows now share one deduplicated per-server loopback listener and every listen has an error handler — an `EADDRINUSE` can no longer crash the DSH process
 - **Wrong `resource` parameter in the authorization link**: the link used to serialize `resource=undefined`, which the authorization server rejects; it now passes a URL object (preferring the protected-resource metadata's resource)
 - **stdio working-directory pitfall**: the form now explains that an empty cwd inherits the Host working directory and that a pnpm workspace there can make npx and similar commands resolve the wrong local package; the hint carries no concrete path, leaving the value to the user
-- **Tool-list stability (better prompt-cache hits)**: tool schemas are canonicalized (recursive key sorting) before registration, so servers reordering schema keys no longer triggers dispose/re-register churn; MCP tools in the system prompt are rendered in stable name order, so the same tool set renders byte-identically no matter the hot-set or `tools/list` order
 
 ## [1.7.0] - 2026-08-21
 

@@ -95,7 +95,7 @@ function failureOf(error: { code: string; message: string }): McpManagerFailure 
  * itself so it needs no modification to any in-box package.
  * @param ctx - Client Cordis root.
  */
-export async function apply(ctx: ClientContext): Promise<void> {
+export async function apply(ctx: Context): Promise<void> {
   await ctx.remote.$mount(remoteContribution)
 
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-settings-mcp: dictionaries')

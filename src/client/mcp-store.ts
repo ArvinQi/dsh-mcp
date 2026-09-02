@@ -4,7 +4,7 @@
  * inject callbacks; the store only mirrors their results so components stay
  * pure presentational.
  */
-import { defineStore, type EngineStoreHandle } from '@deepseek-ai/dsh-client-runtime/client'
+import { defineStore, type EngineStoreHandle } from '@deepseek-ai/dsh-client-store'
 import type {
   McpProbeView, McpServerId, McpServerInput, McpServerView, McpTransportKind,
 } from './types.ts'

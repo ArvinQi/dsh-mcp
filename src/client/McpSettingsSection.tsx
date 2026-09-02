@@ -79,6 +79,7 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
   const t = props.t
 
   const [loadErrorDetail, setLoadErrorDetail] = useState<string | null>(null)
+  const [hostMissing, setHostMissing] = useState(false)
   const [tools, setTools] = useState<McpToolsState | null>(null)
   const [toolsError, setToolsError] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set())
@@ -107,7 +108,12 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
     // The settings shell hides Remote failures behind a generic copy; surface
     // the real message here so a broken list() is diagnosable from the page.
     console.error('[dsh-mcp] list failed:', error)
-    setLoadErrorDetail(String((error instanceof Error ? error.message : error) ?? error))
+    const message = String((error instanceof Error ? error.message : error) ?? error)
+    setLoadErrorDetail(message)
+    // HTTP 404 on /api/mcpManager/* means the host did not register the
+    // mcpManager Typert service (host half missing or client/host version
+    // mismatch). Surface that distinctively instead of a bare transport error.
+    setHostMissing(/HTTP 404|transport failure/.test(message))
     setLoadState('error')
   }
 
@@ -117,6 +123,7 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
         setServers(servers)
         setLoadState('ready')
         setLoadErrorDetail(null)
+        setHostMissing(false)
       },
       (error) => fail(error),
     )
@@ -131,6 +138,7 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
         setServers(servers)
         setLoadState('ready')
         setLoadErrorDetail(null)
+        setHostMissing(false)
       },
       (error) => { if (current) fail(error) },
     )
@@ -169,7 +177,7 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
     setRefreshing(prev => new Set(prev).add(serverName))
     void Promise.all([
       list().then(
-        (servers) => { setServers(servers); setLoadState('ready') },
+        (servers) => { setServers(servers); setLoadState('ready'); setHostMissing(false) },
         () => {},
       ),
       props.toolsList().then(setTools, () => {}),
@@ -225,6 +233,7 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
     return (
       <div className={css.failure}>
         <p role="alert">{t('loadError')}</p>
+        {hostMissing ? <p className={css.muted}>{t('loadErrorHostMissing')}</p> : null}
         {loadErrorDetail !== null ? <pre className={css.muted}>{loadErrorDetail}</pre> : null}
         <button type="button" onClick={() => { setLoadState('loading'); load() }}>{t('retry')}</button>
       </div>

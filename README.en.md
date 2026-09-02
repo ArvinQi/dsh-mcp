@@ -160,7 +160,12 @@ Check in order:
 - Check the `dsh web` process log for `mcp-manager` initialization errors;
 - After upgrading the plugin, restart and **hard-refresh** so the old client bundle does not
   mix with the new host (typical symptom: `client api: ... 404` or `env is not iterable` — both
-  come from mixing versions).
+  come from mixing versions);
+- An error shaped like `transport failure for /api/mcpManager/list: HTTP 404` means the host did
+  not register the `mcpManager` service: usually the plugin host half is not active (missing
+  cordis.patch.yml row / wrong profile) or the client and host versions disagree. Verify the
+  registration row per Q1, confirm the install targets the `web` profile, restart, and
+  hard-refresh; if it persists, upgrade both `dsh web` and the plugin to the latest versions.
 
 **Q3: MCP tools do not show up in an agent session?**
 
@@ -168,6 +173,16 @@ Check in order:
 - In "On-demand search" mode the model discovers tools via `mcp_tool_search` and hot-injects them,
   so tools not searched are absent from the system prompt by design; switch to "Full injection"
   to verify.
+
+**Q4: A server with an `Authorization` header still asks for OAuth / fails to mount?**
+
+- When an `Authorization` (static bearer/token) header is configured, dsh-mcp does NOT treat the
+  server as OAuth: the authorization-code + PKCE flow is enabled only for servers WITHOUT a static
+  `Authorization` header, so a 401 is never mistaken for an OAuth challenge that opens the browser.
+  For a static-token server, make sure the request headers are correct;
+- If an HTTPS intranet host reports `fetch failed` / `unable to verify the first certificate`, the
+  host Node does not trust the internal CA: start `dsh web` with `NODE_OPTIONS=--use-system-ca`
+  (or add the root cert to `NODE_EXTRA_CA_CERTS`), then restart the host and hard-refresh.
 
 **Add a server**:
 

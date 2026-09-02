@@ -7,7 +7,17 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.10.0] - 2026-09-02
+
+### Added
+
+- **Actionable diagnosis when the host half is missing**: when the server-list load fails because of an HTTP 404 on `/api/mcpManager/*` (plugin host half not registered, or client/host version mismatch), the page now shows a troubleshooting hint next to the raw error (verify the `cordis.patch.yml` row → restart `dsh web` → hard-refresh → upgrade both sides); the README troubleshooting section is updated as well
+
+### Fixed
+
+- **Host-side copy internationalization**: the settings UI was fully bilingual but the host half (`lib/index.js`/`lib/oauth.js`/`lib/mcp-client.js`) kept model-visible copy and OAuth errors hardcoded in Chinese. The `mcp_tool_search` description/parameter docs, search-result text, the injected `mcp-tool-control` system prompt, and the OAuth authorization/callback page copy now follow the DSH `locale.preference` from the settings document (new `lib/host-locales.js` table; falls back to Chinese — the previous behavior — when the preference cannot be read)
+- **OAuth decisions no longer key on message text**: the tool-call OAuth preflight used `error.message.includes("授权")` to decide whether to re-throw the link-carrying error — translating the message would silently break OAuth error propagation. It now keys on a stable error code `MCP_OAUTH_REQUIRED` (`error.code`), decoupling control flow from display text
+- **Static-credential servers are no longer mistaken for OAuth**: only streamable-http servers configured for authorization-code + PKCE and WITHOUT a static `Authorization` request header get an OAuth provider; a static-token server facing a 401 now reports the authentication failure instead of starting a browser authorization flow
 
 ## [1.9.0] - 2026-08-28
 

@@ -142,13 +142,27 @@ dsh plugin --profile web add link:<本仓库绝对路径>
 
 - 确认 `dsh web` 进程日志中 `mcp-manager` 没有初始化错误；
 - 若升级过插件，请重启后**硬刷新**，避免旧 client bundle 与新版 host 不匹配
-  （典型现象：操作报 `client api: ... 404` 或 `env is not iterable`，都是新旧版本混用所致）。
+  （典型现象：操作报 `client api: ... 404` 或 `env is not iterable`，都是新旧版本混用所致）；
+- 报错形如 `transport failure for /api/mcpManager/list: HTTP 404` 表示宿主端没有注册
+  `mcpManager` 服务：多半是插件 host 半未生效（漏了 cordis.patch.yml 注册行/装错 profile）或
+  client 与 host 版本不一致。请按 Q1 核对注册行、确认安装到了 `web` profile、重启后硬刷新；
+  仍不行则把 `dsh web` 与插件版本都升到最新再试。
 
 **Q3：MCP 工具没有出现在 agent 会话里？**
 
 - 确认对应服务器状态为「已连接」且工具已勾选（默认全选）；
 - 注入模式为「按需检索」时，模型会通过 `mcp_tool_search` 检索后热注入，未检索到的工具不在
   系统提示词中属正常现象；可切换到「全量注入」验证。
+
+**Q4：服务器配置了 Authorization 头却提示需要 OAuth 授权 / 挂载失败？**
+
+- 只要在请求头里配置了 `Authorization`（静态 Bearer/token），dsh-mcp 就不会把它当作 OAuth
+  服务器：真正的 OAuth（授权码 + PKCE）只对**没有静态 Authorization 头**的服务器启用，避免
+  401 被误当成 OAuth 挑战而打开浏览器授权。若你连的是需要静态 token 的服务器，确认请求头
+  正确即可；
+- 若 https 内网域名报 `fetch failed` / `unable to verify the first certificate`，是宿主 Node
+  不信任公司内网 CA：用 `NODE_OPTIONS=--use-system-ca` 启动 `dsh web`（或把根证书加入
+  `NODE_EXTRA_CA_CERTS`），再重启宿主与硬刷新浏览器。
 
 **添加服务器**：
 

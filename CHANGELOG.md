@@ -7,7 +7,17 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [Unreleased]
+## [1.10.0] - 2026-09-02
+
+### 新增
+
+- **设置页对 host 缺失给出可操作诊断**：服务器列表加载失败若源于 `/api/mcpManager/*` HTTP 404（插件 host 半未注册或 client/host 版本不匹配），页面除原始错误外额外显示排查指引（核对 `cordis.patch.yml` 注册行 → 重启 `dsh web` → 硬刷新 → 同步升级），README 故障排查同步补充
+
+### 修复
+
+- **host 端文案国际化**：设置页双语早已齐备，但 host 半部（`lib/index.js`/`lib/oauth.js`/`lib/mcp-client.js`）的模型可见文案与 OAuth 错误一直是硬编码中文——`mcp_tool_search` 描述与参数说明、检索结果文案、注入的 `mcp-tool-control` 系统提示、OAuth 授权/回调页文案现均按 DSH `locale.preference`（settings 文档）选择 zh/en（新增 `lib/host-locales.js` 文案表；读不到时回退中文，与旧行为一致）
+- **OAuth 判定不再依赖文本匹配**：`mcp-client` 的工具授权预检曾用 `error.message.includes("授权")` 决定是否重抛带链接的错误，翻译消息会静默破坏 OAuth 错误传播——现统一改用稳定的错误码 `MCP_OAUTH_REQUIRED`（`error.code`），控制流与显示文案解耦
+- **静态凭据服务器不再被误当作 OAuth**：只有配置了 OAuth 授权码 + PKCE 且**没有**静态 `Authorization` 请求头的 streamable-http 服务器才挂 OAuth provider；带静态 token 的服务器遇到 401 时直接呈现认证失败，不再触发浏览器授权流程
 
 ## [1.9.0] - 2026-08-28
 

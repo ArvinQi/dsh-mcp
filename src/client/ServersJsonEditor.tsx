@@ -39,7 +39,7 @@ export interface ServersJsonRemote {
   /** Read the current server list. */
   list: () => Promise<readonly McpServerView[]>
   /** Replace the whole server list; returns change counts. */
-  upsertJson: (servers: readonly ServersJsonEntry[]) => Promise<{ added: number; updated: number; removed: number }>
+  upsertJson: (servers: readonly ServersJsonEntry[]) => Promise<{ added: number; updated: number; removed: number; skipped?: number }>
 }
 
 /** Props for the JSON editor panel. */
@@ -50,10 +50,17 @@ export interface ServersJsonEditorProps {
   readonly onApplied: () => void
 }
 
-/** Serialize the current server list into the JSON document text (key-value). */
+/**
+* Serialize the current server list into the JSON document text (key-value).
+*
+* Declared (`cordis`) rows are skipped: the composition owns them and this
+* editor replaces the managed list, so seeding them would turn a read-only
+* declaration into a managed duplicate of the same name.
+*/
 export function serversToJsonText(servers: readonly McpServerView[]): string {
   const document: Record<string, Record<string, unknown>> = {}
   for (const server of servers) {
+    if (server.source === 'cordis') continue
     const entry: Record<string, unknown> = {
       type: server.transport === 'stdio' ? 'stdio' : 'streamable_http',
       disabled: !server.enabled,
@@ -204,7 +211,7 @@ export function ServersJsonEditor({ injected, t, onApplied }: ServersJsonEditorP
     void injected.upsertJson(parsed.servers).then(
       (result) => {
         if (seq !== seqRef.current) return
-        setNotice(`${t('serversJsonDone')}: +${result.added} / ~${result.updated} / -${result.removed}`)
+        setNotice(`${t('serversJsonDone')}: +${result.added} / ~${result.updated} / -${result.removed}${result.skipped === undefined || result.skipped === 0 ? '' : ` / ${t('serversJsonSkipped')} ${result.skipped}`}`)
         onApplied()
       },
       (error: unknown) => {

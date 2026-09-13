@@ -33,6 +33,7 @@ interface McpManagerRemote {
     readonly added: number
     readonly updated: number
     readonly removed: number
+    readonly skipped?: number
     readonly servers: readonly McpServerView[]
   }>>
   test(request: {
@@ -45,6 +46,12 @@ interface McpManagerRemote {
   toolsMode(request: { readonly mode: unknown }): Promise<McpRemoteResult<{ readonly ok: boolean }>>
   envList(): Promise<McpRemoteResult<{ readonly vars: readonly unknown[] }>>
   envSet(request: { readonly vars: readonly unknown[] }): Promise<McpRemoteResult<{ readonly vars: readonly unknown[] }>>
+  adopt(request: { readonly serverName: string }): Promise<McpRemoteResult<{
+    readonly server: McpServerView
+    readonly warning?: string
+    readonly pendingRestart?: boolean
+  }>>
+  release(request: { readonly serverName: string }): Promise<McpRemoteResult<{ readonly warning?: string }>>
 }
 
 export type { McpSettingsSectionProps, McpManagerInjected } from './McpSettingsSection.tsx'
@@ -132,7 +139,13 @@ export async function apply(ctx: Context): Promise<void> {
     },
     upsertJson: async (servers) => {
       const result = await unwrap(() => manager.upsertJson({ servers }))
-      return { added: result.added, updated: result.updated, removed: result.removed, servers: result.servers }
+      return {
+        added: result.added,
+        updated: result.updated,
+        removed: result.removed,
+        ...result.skipped === undefined ? {} : { skipped: result.skipped },
+        servers: result.servers,
+      }
     },
     test: async (draft) => {
       const submission = draftToSubmission(draft)
@@ -163,6 +176,22 @@ export async function apply(ctx: Context): Promise<void> {
     envSet: async (vars) => {
       const result = await unwrap(() => manager.envSet({ vars }))
       return { vars: result.vars }
+    },
+    adopt: async (serverName) => {
+      const result = await manager.adopt({ serverName })
+      if (!result.ok) return { failure: failureOf(result.error) }
+      return {
+        failure: null,
+        ...result.warning === undefined ? {} : { warning: result.warning },
+      }
+    },
+    release: async (serverName) => {
+      const result = await manager.release({ serverName })
+      if (!result.ok) return { failure: failureOf(result.error) }
+      return {
+        failure: null,
+        ...result.warning === undefined ? {} : { warning: result.warning },
+      }
     },
   })
 

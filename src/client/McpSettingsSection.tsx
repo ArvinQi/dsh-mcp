@@ -12,6 +12,12 @@ import type { McpSettingsLocaleKey } from './locales.ts'
 import { createMcpManagerStore, type McpDraft, type McpTestOutcome } from './mcp-store.ts'
 import css from './McpSettingsSection.module.css'
 
+/** One adopt/release attempt: a business failure, or an advisory note. */
+export interface McpTakeoverOutcome {
+  readonly failure: McpManagerFailure | null
+  readonly warning?: string
+}
+
 /** Registration-side Remote face used by the section. */
 export interface McpManagerInjected extends McpServerFormRemote, McpToolControlRemote, GlobalEnvRemote {
   /** Read the current server list. */
@@ -23,7 +29,11 @@ export interface McpManagerInjected extends McpServerFormRemote, McpToolControlR
   /** Probe one draft; `draft.id` lets stored secret values resolve. */
   test: (draft: McpDraft) => Promise<McpTestOutcome>
   /** Replace the whole server list (JSON editor path). */
-  upsertJson: (servers: readonly ServersJsonEntry[]) => Promise<{ added: number; updated: number; removed: number }>
+  upsertJson: (servers: readonly ServersJsonEntry[]) => Promise<{ added: number; updated: number; removed: number; skipped?: number }>
+  /** Take a declared server over so the plugin owns the mount (enables OAuth). */
+  adopt: (serverName: string) => Promise<McpTakeoverOutcome>
+  /** Give an adopted server back to its declaration. */
+  release: (serverName: string) => Promise<McpTakeoverOutcome>
 }
 
 /** Full component props assembled by the Settings slot renderer. */
@@ -73,7 +83,7 @@ function viewToDraft(server: McpServerView): McpDraft {
  * per-server tool-binding list, or the editor when a draft is open.
  */
 export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
-  const { list, save, remove, test } = props
+  const { list, save, remove, test, adopt, release } = props
   const state = props.useStore(snapshot => snapshot)
   const { setLoadState, setServers, beginCreate, beginEdit, cancelEdit, updateDraft, setBusy, setTestRunning, setTest } = props.actions
   const t = props.t
@@ -86,6 +96,9 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
   const [refreshing, setRefreshing] = useState<ReadonlySet<string>>(new Set())
   const [jsonOpen, setJsonOpen] = useState(false)
   const [envOpen, setEnvOpen] = useState(true)
+  const [adopting, setAdopting] = useState<ReadonlySet<string>>(new Set())
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [actionNotice, setActionNotice] = useState<string | null>(null)
   const timersRef = useRef<number[]>([])
   let inlineForm: ReactNode | null = null
 
@@ -197,6 +210,33 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
       else next.add(serverName)
       return next
     })
+  }
+
+  const runAdopt = async (server: McpServerView): Promise<void> => {
+    const giveBack = server.adopted === true
+    // Giving a declaration back to a composition that cannot authenticate it
+    // drops every tool it serves, so that variant states the consequence.
+    const confirmKey = giveBack
+      ? server.needsPlugin === true ? 'releaseConfirmNeedsPlugin' : 'releaseConfirm'
+      : 'adoptConfirm'
+    if (!window.confirm(t(confirmKey))) return
+    setActionError(null)
+    setActionNotice(null)
+    setAdopting(prev => new Set(prev).add(server.serverName))
+    try {
+      const outcome = await (giveBack ? release(server.serverName) : adopt(server.serverName))
+      if (outcome.failure !== null) setActionError(`${outcome.failure.code}: ${outcome.failure.message}`)
+      else if (outcome.warning !== undefined) setActionNotice(outcome.warning)
+    } catch (error) {
+      setActionError(String((error instanceof Error ? error.message : error) ?? error))
+    } finally {
+      setAdopting(prev => {
+        const next = new Set(prev)
+        next.delete(server.serverName)
+        return next
+      })
+      load()
+    }
   }
 
   const toggleEnabled = async (server: McpServerView): Promise<void> => {
@@ -335,6 +375,12 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
             <button type="button" className={css.primary} onClick={beginCreate}>{t('addServer')}</button>
           </div>
         </div>
+        {actionError !== null ? (
+          <p className={css.warn} role="alert">{t('actionFailed')}: {actionError}</p>
+        ) : null}
+        {actionNotice !== null ? (
+          <p className={css.note} role="status">{t('actionNotice')}: {actionNotice}</p>
+        ) : null}
         {jsonOpen ? (
           <ServersJsonEditor
             injected={{ list: props.list, upsertJson: props.upsertJson }}
@@ -365,13 +411,26 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
             const isExpanded = expanded.has(server.serverName)
             const isRefreshing = refreshing.has(server.serverName)
             const serverToolList = serverTools(server.serverName)
+            // Declared servers are mounted by the composition, so this page
+            // only views them: no enable/disable, no refresh, no editor.
+            const declared = server.source === 'cordis'
             const card = (
               <li key={server.id} className={css.card}>
                 <div className={css.row}>
                   <div className={css.rowMain}>
                     <div className={css.rowTitle}>
                       <span className={css.serverName}>{server.serverName}</span>
-                      <span className={`${css.badge} ${css[server.status.phase]}`}>{t(phaseKey(server.status.phase))}</span>
+                      {declared ? <span className={`${css.badge} ${css.cordis}`}>{t('sourceCordis')}</span> : null}
+                      {/* A name the composition currently serves is declared, not
+                          disabled: showing the mount phase as "未启用" would be wrong
+                          and the enable/disable button cannot take effect. */}
+                      {server.pendingTakeover ? (
+                        <span className={`${css.badge} ${css.cordis}`}>{t('pendingBadge')}</span>
+                      ) : server.conflict ? (
+                        <span className={`${css.badge} ${css.cordis}`}>{t('conflictBadge')}</span>
+                      ) : (
+                        <span className={`${css.badge} ${css[server.status.phase]}`}>{t(phaseKey(server.status.phase))}</span>
+                      )}
                       {!server.enabled && server.status.phase !== 'stopped' ? <span className={css.muted}>{t('statusStopped')}</span> : null}
                     </div>
                     <div className={css.rowMeta}>
@@ -379,18 +438,43 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
                       <span>{t('toolCount')}: {server.status.tools.length}</span>
                       <span>{t('envVars')}: {server.env.length}</span>
                     </div>
+                    {server.declaredIn ? (
+                      <p className={css.path} title={server.declaredIn}>{t('declaredIn')}: {server.declaredIn}</p>
+                    ) : null}
+                    {server.conflict ? <p className={css.warn}>{t('conflictDeclared')}</p> : null}
+                    {server.needsPlugin ? <p className={css.warn}>{t('needsPluginHint')}</p> : null}
+                    {server.status.error ? <p className={css.warn}>{server.status.error}</p> : null}
+                    {declared ? <p className={css.note}>{t('readOnlyHint')}</p> : null}
+                    {server.stale ? <p className={css.note}>{t('staleMirror')}</p> : null}
+                    {server.skipReason === 'js-expression' ? <p className={css.warn}>{t('skipJsExpr')}</p> : null}
+                    {server.pendingTakeover ? <p className={css.note}>{t('pendingTakeover')}</p> : null}
+                    {declared && server.oauthHint ? <p className={css.warn}>{t('oauthHint')}</p> : null}
                   </div>
                   <div className={css.rowActions}>
-                    <button type="button" disabled={isRefreshing} onClick={() => void toggleEnabled(server)}>
-                      {server.enabled ? t('disable') : t('enabled')}
-                    </button>
-                    <button type="button" disabled={isRefreshing} onClick={() => refreshServer(server.serverName)}>
-                      {isRefreshing ? t('refreshing') : t('refresh')}
-                    </button>
+                    {declared || server.conflict || server.pendingTakeover ? null : (
+                      <button type="button" disabled={isRefreshing} onClick={() => void toggleEnabled(server)}>
+                        {server.enabled ? t('disable') : t('enabled')}
+                      </button>
+                    )}
+                    {declared ? null : (
+                      <button type="button" disabled={isRefreshing} onClick={() => refreshServer(server.serverName)}>
+                        {isRefreshing ? t('refreshing') : t('refresh')}
+                      </button>
+                    )}
+                    {declared && server.adoptable ? (
+                      <button type="button" disabled={adopting.has(server.serverName)} onClick={() => void runAdopt(server)}>
+                        {adopting.has(server.serverName) ? t('adopting') : t('adopt')}
+                      </button>
+                    ) : null}
+                    {server.adopted ? (
+                      <button type="button" disabled={adopting.has(server.serverName)} onClick={() => void runAdopt(server)}>
+                        {adopting.has(server.serverName) ? t('releasing') : t('release')}
+                      </button>
+                    ) : null}
                     <button type="button" onClick={() => toggleExpand(server.serverName)}>
                       {isExpanded ? t('toolsCollapse') : t('toolsExpand')}
                     </button>
-                    <button type="button" onClick={() => beginEdit(server)}>{t('edit')}</button>
+                    {declared ? null : <button type="button" onClick={() => beginEdit(server)}>{t('edit')}</button>}
                   </div>
                 </div>
                 {isExpanded ? (

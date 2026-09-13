@@ -9,7 +9,7 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_delete_result$schema = z.union([z.
 }), z.object({
   'ok': z.literal(false).readonly(),
   'error': z.object({
-  'code': z.union([z.literal("MCP_SERVER_NOT_FOUND"), z.literal("MCP_SERVER_NAME_CONFLICT"), z.literal("MCP_INVALID_SPEC"), z.literal("MCP_MOUNT_FAILED")]).readonly(),
+  'code': z.union([z.literal("MCP_SERVER_NOT_FOUND"), z.literal("MCP_SERVER_NAME_CONFLICT"), z.literal("MCP_INVALID_SPEC"), z.literal("MCP_MOUNT_FAILED"), z.literal("MCP_ADOPT_NOT_DECLARED"), z.literal("MCP_ADOPT_NO_ID"), z.literal("MCP_ADOPT_JS_EXPR"), z.literal("MCP_ADOPT_FAILED"), z.literal("MCP_ADOPT_RELOAD_PENDING"), z.literal("MCP_RELEASE_FAILED")]).readonly(),
   'message': z.string().readonly(),
 }).readonly(),
 })])
@@ -41,7 +41,30 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_list_result$schema = z.object({
   'tools': z.array(z.string()).readonly(),
   'error': z.string().readonly().optional(),
 }).readonly(),
+  'source': z.union([z.literal("plugin"), z.literal("cordis")]).readonly().optional(),
+  'readOnly': z.boolean().readonly().optional(),
+  'conflict': z.boolean().readonly().optional(),
+  'declaredIn': z.string().readonly().optional(),
+  'layer': z.union([z.literal("profile"), z.literal("home")]).readonly().optional(),
+  'oauthHint': z.boolean().readonly().optional(),
+  'stale': z.boolean().readonly().optional(),
+  'imported': z.boolean().readonly().optional(),
+  'skipReason': z.union([z.literal("js-expression")]).readonly().optional(),
+  'adoptable': z.boolean().readonly().optional(),
+  'adopted': z.boolean().readonly().optional(),
+  'pendingTakeover': z.boolean().readonly().optional(),
+  'needsPlugin': z.boolean().readonly().optional(),
 })).readonly(),
+  'declared': z.object({
+  'layers': z.array(z.object({
+  'kind': z.union([z.literal("profile"), z.literal("home")]).readonly(),
+  'path': z.string().readonly(),
+  'exists': z.boolean().readonly(),
+  'count': z.number().readonly(),
+  'error': z.string().readonly().optional(),
+})).readonly(),
+  'warnings': z.array(z.string()).readonly(),
+}).readonly().optional(),
 })
 const _deepseek_ai_dsh_mcp_manager_mcpManager_test_parameter_0$schema = z.object({
   'id': z.intersection(z.string(), z.unknown()).readonly().optional(),
@@ -131,11 +154,24 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_upsert_result$schema = z.union([z.
   'tools': z.array(z.string()).readonly(),
   'error': z.string().readonly().optional(),
 }).readonly(),
+  'source': z.union([z.literal("plugin"), z.literal("cordis")]).readonly().optional(),
+  'readOnly': z.boolean().readonly().optional(),
+  'conflict': z.boolean().readonly().optional(),
+  'declaredIn': z.string().readonly().optional(),
+  'layer': z.union([z.literal("profile"), z.literal("home")]).readonly().optional(),
+  'oauthHint': z.boolean().readonly().optional(),
+  'stale': z.boolean().readonly().optional(),
+  'imported': z.boolean().readonly().optional(),
+  'skipReason': z.union([z.literal("js-expression")]).readonly().optional(),
+  'adoptable': z.boolean().readonly().optional(),
+  'adopted': z.boolean().readonly().optional(),
+  'pendingTakeover': z.boolean().readonly().optional(),
+  'needsPlugin': z.boolean().readonly().optional(),
 }).readonly(),
 }), z.object({
   'ok': z.literal(false).readonly(),
   'error': z.object({
-  'code': z.union([z.literal("MCP_SERVER_NOT_FOUND"), z.literal("MCP_SERVER_NAME_CONFLICT"), z.literal("MCP_INVALID_SPEC"), z.literal("MCP_MOUNT_FAILED")]).readonly(),
+  'code': z.union([z.literal("MCP_SERVER_NOT_FOUND"), z.literal("MCP_SERVER_NAME_CONFLICT"), z.literal("MCP_INVALID_SPEC"), z.literal("MCP_MOUNT_FAILED"), z.literal("MCP_ADOPT_NOT_DECLARED"), z.literal("MCP_ADOPT_NO_ID"), z.literal("MCP_ADOPT_JS_EXPR"), z.literal("MCP_ADOPT_FAILED"), z.literal("MCP_ADOPT_RELOAD_PENDING"), z.literal("MCP_RELEASE_FAILED")]).readonly(),
   'message': z.string().readonly(),
 }).readonly(),
 })])
@@ -168,6 +204,7 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_upsertJson_result$schema = z.union
   'added': z.number().readonly(),
   'updated': z.number().readonly(),
   'removed': z.number().readonly(),
+  'skipped': z.number().readonly().optional(),
   'servers': z.array(z.object({
   'id': z.intersection(z.string(), z.unknown()).readonly(),
   'serverName': z.string().readonly(),
@@ -194,11 +231,24 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_upsertJson_result$schema = z.union
   'tools': z.array(z.string()).readonly(),
   'error': z.string().readonly().optional(),
 }).readonly(),
+  'source': z.union([z.literal("plugin"), z.literal("cordis")]).readonly().optional(),
+  'readOnly': z.boolean().readonly().optional(),
+  'conflict': z.boolean().readonly().optional(),
+  'declaredIn': z.string().readonly().optional(),
+  'layer': z.union([z.literal("profile"), z.literal("home")]).readonly().optional(),
+  'oauthHint': z.boolean().readonly().optional(),
+  'stale': z.boolean().readonly().optional(),
+  'imported': z.boolean().readonly().optional(),
+  'skipReason': z.union([z.literal("js-expression")]).readonly().optional(),
+  'adoptable': z.boolean().readonly().optional(),
+  'adopted': z.boolean().readonly().optional(),
+  'pendingTakeover': z.boolean().readonly().optional(),
+  'needsPlugin': z.boolean().readonly().optional(),
 })).readonly(),
 }), z.object({
   'ok': z.literal(false).readonly(),
   'error': z.object({
-  'code': z.union([z.literal("MCP_SERVER_NOT_FOUND"), z.literal("MCP_SERVER_NAME_CONFLICT"), z.literal("MCP_INVALID_SPEC"), z.literal("MCP_MOUNT_FAILED")]).readonly(),
+  'code': z.union([z.literal("MCP_SERVER_NOT_FOUND"), z.literal("MCP_SERVER_NAME_CONFLICT"), z.literal("MCP_INVALID_SPEC"), z.literal("MCP_MOUNT_FAILED"), z.literal("MCP_ADOPT_NOT_DECLARED"), z.literal("MCP_ADOPT_NO_ID"), z.literal("MCP_ADOPT_JS_EXPR"), z.literal("MCP_ADOPT_FAILED"), z.literal("MCP_ADOPT_RELOAD_PENDING"), z.literal("MCP_RELEASE_FAILED")]).readonly(),
   'message': z.string().readonly(),
 }).readonly(),
 })])
@@ -267,6 +317,74 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_envSet_result$schema = z.union([z.
   'ok': z.literal(false).readonly(),
   'error': z.object({
   'code': z.union([z.literal("MCP_INVALID_SPEC")]).readonly(),
+  'message': z.string().readonly(),
+}).readonly(),
+})])
+
+const _deepseek_ai_dsh_mcp_manager_mcpManager_adopt_parameter_0$schema = z.object({
+  'serverName': z.string().readonly(),
+})
+const _deepseek_ai_dsh_mcp_manager_mcpManager_adopt_result$schema = z.union([z.object({
+  'ok': z.literal(true).readonly(),
+  'server': z.object({
+  'id': z.intersection(z.string(), z.unknown()).readonly(),
+  'serverName': z.string().readonly(),
+  'transport': z.union([z.literal("stdio"), z.literal("streamable-http")]).readonly(),
+  'enabled': z.boolean().readonly(),
+  'command': z.string().readonly(),
+  'args': z.array(z.string()).readonly(),
+  'cwd': z.string().readonly(),
+  'url': z.string().readonly(),
+  'headers': z.array(z.object({
+  'name': z.string().readonly(),
+  'value': z.string().readonly(),
+})).readonly(),
+  'env': z.array(z.object({
+  'name': z.string().readonly(),
+  'secret': z.boolean().readonly(),
+  'configured': z.boolean().readonly(),
+  'value': z.string().readonly().optional(),
+})).readonly(),
+  'toolCallTimeoutMs': z.number().readonly(),
+  'failOnStartupError': z.boolean().readonly(),
+  'status': z.object({
+  'phase': z.union([z.literal("failed"), z.literal("stopped"), z.literal("mounting"), z.literal("live")]).readonly(),
+  'tools': z.array(z.string()).readonly(),
+  'error': z.string().readonly().optional(),
+}).readonly(),
+  'source': z.union([z.literal("plugin"), z.literal("cordis")]).readonly().optional(),
+  'readOnly': z.boolean().readonly().optional(),
+  'conflict': z.boolean().readonly().optional(),
+  'declaredIn': z.string().readonly().optional(),
+  'layer': z.union([z.literal("profile"), z.literal("home")]).readonly().optional(),
+  'oauthHint': z.boolean().readonly().optional(),
+  'stale': z.boolean().readonly().optional(),
+  'imported': z.boolean().readonly().optional(),
+  'skipReason': z.union([z.literal("js-expression")]).readonly().optional(),
+  'adoptable': z.boolean().readonly().optional(),
+  'adopted': z.boolean().readonly().optional(),
+  'pendingTakeover': z.boolean().readonly().optional(),
+  'needsPlugin': z.boolean().readonly().optional(),
+}).readonly(),
+  'warning': z.string().readonly().optional(),
+  'pendingRestart': z.boolean().readonly().optional(),
+}), z.object({
+  'ok': z.literal(false).readonly(),
+  'error': z.object({
+  'code': z.union([z.literal("MCP_ADOPT_NOT_DECLARED"), z.literal("MCP_ADOPT_NO_ID"), z.literal("MCP_ADOPT_JS_EXPR"), z.literal("MCP_ADOPT_FAILED"), z.literal("MCP_ADOPT_RELOAD_PENDING"), z.literal("MCP_RELEASE_FAILED")]).readonly(),
+  'message': z.string().readonly(),
+}).readonly(),
+})])
+const _deepseek_ai_dsh_mcp_manager_mcpManager_release_parameter_0$schema = z.object({
+  'serverName': z.string().readonly(),
+})
+const _deepseek_ai_dsh_mcp_manager_mcpManager_release_result$schema = z.union([z.object({
+  'ok': z.literal(true).readonly(),
+  'warning': z.string().readonly().optional(),
+}), z.object({
+  'ok': z.literal(false).readonly(),
+  'error': z.object({
+  'code': z.union([z.literal("MCP_ADOPT_NOT_DECLARED"), z.literal("MCP_ADOPT_NO_ID"), z.literal("MCP_ADOPT_JS_EXPR"), z.literal("MCP_ADOPT_FAILED"), z.literal("MCP_ADOPT_RELOAD_PENDING"), z.literal("MCP_RELEASE_FAILED")]).readonly(),
   'message': z.string().readonly(),
 }).readonly(),
 })])
@@ -491,6 +609,56 @@ export const TYPERT_REMOTE = {
         mode: 'strict',
         typeSymbol: '@deepseek-ai/dsh-mcp-manager/types#McpManagerEnvSetResult',
         schema: _deepseek_ai_dsh_mcp_manager_mcpManager_envSet_result$schema,
+      },
+      sourceLocation: {"file":"lib/index.js"},
+    },
+    {
+      id: '@deepseek-ai/dsh-mcp-manager#mcpManager/adopt',
+      service: 'mcpManager',
+      namespace: 'mcpManager',
+      method: 'adopt',
+      invocation: { kind: 'direct' },
+      parameters: [
+        {
+          name: 'request',
+          wire: 'request',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: '@deepseek-ai/dsh-mcp-manager/types#McpManagerAdoptRequest',
+            schema: _deepseek_ai_dsh_mcp_manager_mcpManager_adopt_parameter_0$schema,
+          },
+        },
+      ],
+      result: {
+        mode: 'strict',
+        typeSymbol: '@deepseek-ai/dsh-mcp-manager/types#McpManagerAdoptResult',
+        schema: _deepseek_ai_dsh_mcp_manager_mcpManager_adopt_result$schema,
+      },
+      sourceLocation: {"file":"lib/index.js"},
+    },
+    {
+      id: '@deepseek-ai/dsh-mcp-manager#mcpManager/release',
+      service: 'mcpManager',
+      namespace: 'mcpManager',
+      method: 'release',
+      invocation: { kind: 'direct' },
+      parameters: [
+        {
+          name: 'request',
+          wire: 'request',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: '@deepseek-ai/dsh-mcp-manager/types#McpManagerReleaseRequest',
+            schema: _deepseek_ai_dsh_mcp_manager_mcpManager_release_parameter_0$schema,
+          },
+        },
+      ],
+      result: {
+        mode: 'strict',
+        typeSymbol: '@deepseek-ai/dsh-mcp-manager/types#McpManagerReleaseResult',
+        schema: _deepseek_ai_dsh_mcp_manager_mcpManager_release_result$schema,
       },
       sourceLocation: {"file":"lib/index.js"},
     },

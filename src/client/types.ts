@@ -66,6 +66,12 @@ export interface McpServerStatus {
   readonly error?: string
 }
 
+/** Where one server definition came from. */
+export type McpServerSource = 'plugin' | 'cordis'
+
+/** Which Cordis patch layer declared one server. */
+export type McpPatchLayerKind = 'profile' | 'home'
+
 /** Full client-facing projection of one managed server. */
 export interface McpServerView {
   readonly id: McpServerId
@@ -81,6 +87,32 @@ export interface McpServerView {
   readonly toolCallTimeoutMs: number
   readonly failOnStartupError: boolean
   readonly status: McpServerStatus
+  /** `plugin` = stored and mounted here; `cordis` = declared in a patch layer. */
+  readonly source?: McpServerSource
+  /** True for a patch-layer declaration: the page views it, it does not own it. */
+  readonly readOnly?: boolean
+  /** True when a patch-layer declaration owns this stored row's serverName. */
+  readonly conflict?: boolean
+  /** Absolute patch file the declaration was read from. */
+  readonly declaredIn?: string
+  /** Patch layer that carried the declaration. */
+  readonly layer?: McpPatchLayerKind
+  /** Streamable-http declaration with no static Authorization header. */
+  readonly oauthHint?: boolean
+  /** True for a mirror whose declaration disappeared from the patch layers. */
+  readonly stale?: boolean
+  /** False when the entry is shown straight from the patch file (not imported). */
+  readonly imported?: boolean
+  /** Why the entry has no importable mirror. */
+  readonly skipReason?: 'js-expression'
+  /** True when the declaration can be taken over by the plugin. */
+  readonly adoptable?: boolean
+  /** True when this managed row is a declaration the plugin took over. */
+  readonly adopted?: boolean
+  /** Registered takeover whose disable block is not applied yet (needs a restart). */
+  readonly pendingTakeover?: boolean
+  /** The declaration can only authenticate while the plugin owns the mount. */
+  readonly needsPlugin?: boolean
 }
 
 /** One MCP tool summary in a probe report. */
@@ -100,6 +132,12 @@ export type McpManagerFailureCode =
   | 'MCP_SERVER_NAME_CONFLICT'
   | 'MCP_INVALID_SPEC'
   | 'MCP_MOUNT_FAILED'
+  | 'MCP_ADOPT_NOT_DECLARED'
+  | 'MCP_ADOPT_NO_ID'
+  | 'MCP_ADOPT_JS_EXPR'
+  | 'MCP_ADOPT_FAILED'
+  | 'MCP_ADOPT_RELOAD_PENDING'
+  | 'MCP_RELEASE_FAILED'
 
 /** Explicit business failure of one management operation. */
 export interface McpManagerFailure {

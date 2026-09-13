@@ -115,6 +115,17 @@ node scripts/build.mjs
 - CSS Modules 由 esbuild onLoad 插件处理：样式注入
   `<style data-plugin="dsh-mcp" data-file="…">`，默认导出 identity 类名映射。
 
+## 测试
+
+```sh
+npm test
+```
+
+- `npm test` 会自动适配环境：依赖 DSH 模块闭包（`@deepseek-ai/*`、`js-yaml`）的测试文件
+  （`cordis-servers` / `patch-writer` / `takeover`）在**缺少本地 DSH 安装时会被跳过**（公共 CI
+  即如此），本机（profile 的 `node_modules` 可达）则跑全量，并在输出里说明跳过了哪些文件。
+- 新增依赖 DSH 闭包的测试文件时，记得加进 `scripts/test.mjs` 的 `NEEDS_DSH_CLOSURE` 列表。
+
 ## 安装使用
 
 ### 1. 安装

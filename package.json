@@ -22,7 +22,7 @@
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "node --test test/mcp-image-projection.test.mjs test/host-locales.test.mjs test/cordis-servers.test.mjs test/patch-writer.test.mjs test/takeover.test.mjs"
+    "test": "node scripts/test.mjs"
   },
   "author": "Arvin.qi <arvin.qi@qq.com>",
   "license": "MIT",

@@ -112,6 +112,19 @@ node scripts/build.mjs
 - CSS Modules are handled by an esbuild onLoad plugin: styles are injected into a
   `<style data-plugin="dsh-mcp" data-file="…">` tag, and the module default-exports an identity class-name map.
 
+## Test
+
+```sh
+npm test
+```
+
+- `npm test` adapts to the environment: the files that import the DSH module closure
+  (`@deepseek-ai/*`, `js-yaml`) — `cordis-servers`, `patch-writer`, `takeover` — are **skipped when
+  no local DSH installation resolves** (as in public CI), while a local checkout with the profile's
+  `node_modules` in reach runs the whole suite; the run says which files it skipped.
+- When you add a test file that needs the DSH closure, add it to `NEEDS_DSH_CLOSURE` in
+  `scripts/test.mjs`.
+
 ## Install & Usage
 
 ### 1. Install

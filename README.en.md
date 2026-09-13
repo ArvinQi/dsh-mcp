@@ -50,7 +50,36 @@ Migrated and merged from uncommitted MCP work in the `deepseek-harness` reposito
   mounts share the same token.
 - **Remote self-mount**: the client half mounts the `mcpManager` Remote namespace itself via `ctx.remote.$mount()` in `apply()`,
   so no in-box package modification is required.
+- **Declared servers are read too** (host, `lib/cordis-servers.js`): `@deepseek-ai/dsh-mcp-client` rows
+  declared in the patch layers are listed read-only on the Settings page (see below).
 - Zero npm runtime dependencies (`@deepseek-ai/*` resolve from the DSH profiles module fallback).
+
+### Declared servers (`cordis.patch.yml`) and precedence
+
+DSH can declare MCP servers directly in the composition: **one row per server**, `name: '@deepseek-ai/dsh-mcp-client'`,
+in the profile layer `$DSH_HOME/profiles/<profile>/cordis.patch.yml` or the machine-wide layer
+`$DSH_HOME/cordis.patch.yml` (machine-wide applies to every profile and overrides the profile layer per row id).
+
+```yaml
+- insert:
+    - id: mcp-github
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        transport: stdio          # or streamable-http
+        serverName: github
+        command: npx
+        args: ['-y', '@modelcontextprotocol/server-github']
+```
+
+Since 1.11.0 those declarations appear in Settings → MCP, badged "cordis declaration", read-only, with the file they came from:
+
+- **Declarations win**: when a `serverName` is already declared (and not `disabled`), the manager does not mount the same-named stored row — two mounts under one name collide in the tool registry and roll back that server's whole generation; the page explains the conflict.
+- **Read-only**: declared servers cannot be enabled/disabled or edited here; edit `cordis.patch.yml` instead (`web`/`desktop` reload live; `headless`/`sdk` apply it on the next start).
+- **Imported into storages as mirrors**: at startup and on every refresh the declarations are imported into the storage domain (id `cordis:<rowId>`, with `origin/declaredIn/declaredRowId`), **import only** — a row created in the plugin is never overwritten; a mirror whose declaration disappeared is **removed automatically** (a mirror is only a copy of a declaration, so an ownerless one must not pile up); a declaration containing a `!!js` expression is skipped and flagged with the reason (its value only resolves inside the Loader). Mirrors are never mounted — the composition owns the mount.
+- **Take over / give back**: clicking "Take over" makes the plugin write an id-targeted `disabled: true` into its own **managed block** in `cordis.patch.yml` (a `.dsh-mcp.bak` backup is taken before the first write; atomic, idempotent, reversible, confined to that block). The declaration releases the `serverName` and the plugin mounts its own row instead — enabling **OAuth authorization, managed credentials, `${VAR}` header substitution and connection tests**. A hard mount failure rolls back automatically (the block is removed and the row returns to mirror state) and reports why; "Give back" hands the mount back to the declaration and deletes the managed row. A declaration without an explicit `id`, or one containing a `!!js` expression, cannot be taken over.
+- **OAuth / placeholder limit (`needsPlugin`)**: a declaration can carry neither an OAuth provider nor `${VAR}` / bare-name placeholder substitution — only the plugin does those. Such a declaration can therefore only work while the plugin owns the mount: the page reports it as **failed with the reason** (not "connecting"), "Give back" makes its tools disappear (the confirmation and the result warning both say so), and taking it over again restores them.
+- **Safe degradation when the hot reload does not commit**: if the native tools have not unregistered within 5 seconds of writing the disable block (that profile's patch hot reload did not commit — a sibling entry failing its re-apply rolls the whole generation back), the plugin **registers the takeover without mounting** (the managed row is marked `pendingTakeover`); the next dsh start mounts it, and "Give back" reports the same need for a restart. A mount is also always skipped when same-named `mcp__<server>__` tools already exist without a local mount, so the plugin never fights a still-mounted declaration for one name.
+- **Tool search covers them**: search/hot injection and per-tool switches work by `mcp__` prefix across the whole tool set, so declared tools need no extra configuration.
 
 ## Structure
 
@@ -59,6 +88,8 @@ dsh-mcp/
 ├── package.json          name=dsh-mcp; dsh.client declaration; zero npm dependencies
 ├── lib/
 │   ├── index.js          host half (McpManagerService, built from mcp-manager)
+│   ├── cordis-servers.js reads natively declared MCP servers from the patch layers (1.11.0)
+│   ├── patch-writer.js   managed-block writer: disables a declaration on takeover (backup/atomic/idempotent)
 │   ├── mcp-client.js     vendored MCP client (from @deepseek-ai/dsh-mcp-client, with tool-list stability extension)
 │   ├── oauth.js          MCP OAuth client provider (authorization-code + PKCE, loopback callback, token persistence)
 │   ├── probe.js          vendored connection probe (from mcp-client/src/probe.ts)

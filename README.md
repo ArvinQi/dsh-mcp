@@ -37,6 +37,51 @@
   测试连接与挂载共用同一份 token。
 - **Remote 自挂载**：client 半部在 `apply()` 里自行 `ctx.remote.$mount()` 挂载 `mcpManager`
   命名空间（原实现依赖 api-remotes 的 in-box 修改，独立版不再需要任何 in-box 包改动）。
+- **读取声明式服务器**（host，`lib/cordis-servers.js`）：把 patch 层里原生声明的
+  `@deepseek-ai/dsh-mcp-client` 行一并展示到设置页（只读，见下节）。
+
+### 声明式服务器（`cordis.patch.yml`）与优先级
+
+DSH 原生支持在组合里直接声明 MCP 服务器：**一行一台**，`name: '@deepseek-ai/dsh-mcp-client'`，
+放在 profile 级 `$DSH_HOME/profiles/<profile>/cordis.patch.yml` 或机器级
+`$DSH_HOME/cordis.patch.yml`（机器级对所有 profile 生效，且按层级覆盖 profile 级同 id 行）。
+
+```yaml
+- insert:
+    - id: mcp-github
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        transport: stdio          # 或 streamable-http
+        serverName: github
+        command: npx
+        args: ['-y', '@modelcontextprotocol/server-github']
+```
+
+1.11.0 起，这些声明会出现在 Settings → MCP 列表中，标记「cordis 声明」，只读展示来源文件。
+规则：
+
+- **声明优先**：同一 `serverName` 若已被 patch 层声明（且未 `disabled`），插件不再挂载存储里
+  的同名行——同名双挂载会撞工具注册表并让该服务器的工具整代回滚，页面会给出冲突说明。
+- **只读**：声明式服务器在本页不可启停/编辑，改配置请直接改 `cordis.patch.yml`（`web`/`desktop`
+  为 live reload，改完即生效；`headless`/`sdk` 等下次启动生效）。
+- **导入 storages（镜像行）**：启动与每次刷新会把声明导入存储 domain（id `cordis:<rowId>`，
+  带 `origin/declaredIn/declaredRowId` 来源标记），**只导入不覆盖**——插件自建行永不被改写；
+  声明消失的镜像**自动删除**（镜像只是声明的副本，无主后不应堆积）；含 `!!js` 表达式的声明**跳过导入**并在页面标注
+  原因（值只能在 Loader 内求值）。镜像行**永不挂载**，挂载始终归组合。
+- **接管 / 释放**：点击「接管」后，插件在 `cordis.patch.yml` 的**受管块**内写入 id-targeted `disabled: true`
+  （首次写入前生成 `.dsh-mcp.bak` 备份；原子替换、幂等、可逆，只动该块），声明让出 `serverName`，改由插件挂载
+  同名行——由此启用 **OAuth 授权、凭据托管、`${VAR}` 头替换、测试连接**。挂载**硬失败**会自动回滚（移除受管块、
+  行退回镜像）并返回失败原因；「释放」把挂载交还声明行并删除插件行。缺少显式 `id` 或含 `!!js` 的声明不可接管。
+- **OAuth / 占位符限制（`needsPlugin`）**：声明行本身既不能携带 OAuth provider，也不能解析
+  `${VAR}`/裸变量名占位符——这两件事只有插件会做。因此这类声明**只能由插件挂载**：页面会把它们标为
+  **挂载失败并说明原因**（不是"连接中"），「释放」会让工具消失（确认框与结果告警都会提示），恢复只需
+  重新「接管」。
+- **热重载未提交时的安全降级**：写入停用块后若原生工具 5 秒内没有注销（该 profile 的 patch 热重载未提交，
+  例如某个兄弟条目重建失败导致整代回滚），插件会**登记接管但暂不挂载**（管理行标记 `pendingTakeover`），
+  重启 dsh 后由插件挂载；「释放」在同样情况下会提示需要重启。此外，挂载前若发现同名 `mcp__<server>__`
+  工具已存在且不是本插件挂载的，一律跳过——任何情况下都不会与仍在挂载的声明行争抢同名工具。
+- **tool search 覆盖**：检索/热注入与单工具开关按 `mcp__` 前缀处理整个工具集，声明式服务器的
+  工具天然纳入，无需额外配置。
 
 ## 结构
 
@@ -45,6 +90,8 @@ dsh-mcp/
 ├── package.json          name=dsh-mcp；dsh.client 声明；零 npm dependencies
 ├── lib/
 │   ├── index.js          host 半部（McpManagerService，源自 mcp-manager 构建产物）
+│   ├── cordis-servers.js 读取 patch 层原生声明的 MCP 服务器（1.11.0）
+│   ├── patch-writer.js   受管块写入器：接管时在 patch 文件里停用声明行（备份/原子/幂等）
 │   ├── mcp-client.js     vendored MCP 客户端（源自 @deepseek-ai/dsh-mcp-client，含工具列表稳定扩展）
 │   ├── oauth.js          MCP OAuth 客户端提供者（授权码 + PKCE、回环回调、token 持久化）
 │   ├── probe.js          vendored 连接探测（源自 mcp-client/src/probe.ts）

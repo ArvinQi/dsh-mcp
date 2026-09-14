@@ -1,25 +1,42 @@
-# This workflow will run tests using node and then publish a package to GitHub Packages when a release is created
-# For more information see: https://docs.github.com/en/actions/publishing-packages/publishing-nodejs-packages
+# Publish this package to GitHub Packages when a GitHub Release is created.
+#
+# Two constraints shape this file:
+#
+# 1. GitHub Packages' npm registry only accepts **scoped** names, while this
+#    package is published to the public npm registry as `dsh-mcp` (the name
+#    users install). The publish job therefore rewrites the name for THIS
+#    registry only: GitHub Packages receives `@arvinqi/dsh-mcp` (the scope must
+#    match the repository owner) and the public registry keeps `dsh-mcp`.
+#    Nothing else needs to change: service names, the settings section id, tool
+#    names and credential prefixes do not depend on the package name.
+# 2. The package has zero dependencies and no lockfile, so there is nothing to
+#    install — `npm ci` would only fail with EUSAGE.
+#
+# See https://docs.github.com/en/actions/publishing-packages/publishing-nodejs-packages
 
-name: Node.js Package
+name: Node.js Package (GitHub Packages)
 
 on:
   release:
     types: [created]
 
 jobs:
-  build:
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm ci
+      # Zero-dependency package: no install step, just the focused tests and
+      # syntax smoke checks (the same gate the public-npm workflow uses).
       - run: npm test
+      - run: node --check lib/index.js
+      - run: node --check lib/client.js
+      - run: node --check scripts/build.mjs
 
   publish-gpr:
-    needs: build
+    needs: check
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -30,7 +47,9 @@ jobs:
         with:
           node-version: 20
           registry-url: https://npm.pkg.github.com/
-      - run: npm ci
+      # GitHub Packages requires a scoped name; this rewrite affects only the
+      # tarball published to this registry.
+      - run: npm pkg set name=@arvinqi/dsh-mcp
       - run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}

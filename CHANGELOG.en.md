@@ -7,6 +7,14 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.1] - 2026-09-13
+
+### Fixed
+
+- **OAuth is now an explicit switch instead of a header guess (no more repeated browser authorizations)**: the previous rule was "streamable-http without an `Authorization` header gets an OAuth provider", so servers that authenticate with static tokens or custom headers (`x-bbzai-mcp-token`, `X-Mcp-Token`, `Private-Token`) were treated as OAuth servers. When such a server answered 401 (a stale token, a gateway challenge), the SDK asked for authorization, the plugin opened the browser and started its loopback callback (`127.0.0.1:<port>/callback`) — a flow that could never satisfy those servers, so every reconnect or remount opened the browser again. A stored server now has an **`oauth: true`** switch (the form's "Use OAuth authorization" checkbox, off by default; taking over a declaration without an `Authorization` header ticks it, and it stays editable)
+- **Upgrade migration**: servers that already hold OAuth credentials (a token or a client registration) keep `oauth: true`, everything else is turned off — so servers that genuinely need OAuth keep working while the misdetected ones stop opening the browser
+- **Automatic-authorization circuit breaker**: the plugin opens the browser **at most once per server per process**; later automatic attempts return the authorization-link error instead (the 1.8.0 behaviour), and "Test connection" can still start an authorization on demand
+
 ## [1.11.0] - 2026-09-13
 
 ### Added

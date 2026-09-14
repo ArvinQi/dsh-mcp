@@ -25,6 +25,8 @@ export interface McpDraft {
   readonly headersText: string
   /** Timeout as editor text; blank falls back to the default. */
   readonly toolCallTimeoutMs: string
+  /** Explicit OAuth switch: only then does the Host attach an OAuth provider. */
+  readonly oauth: boolean
   readonly failOnStartupError: boolean
 }
 
@@ -78,6 +80,9 @@ export function emptyDraft(): McpDraft {
     // Reject the mount by default when the startup connection fails, so a
     // broken server never registers stale tools.
     failOnStartupError: true,
+    // OAuth is opt-in: guessing it from the headers opened the browser for
+    // servers that authenticate with static tokens.
+    oauth: false,
   }
 }
 
@@ -94,6 +99,7 @@ export function draftFromServer(server: McpServerView): McpDraft {
     url: server.url,
     headersText: server.headers.map(header => `${header.name}: ${header.value}`).join('\n'),
     toolCallTimeoutMs: String(server.toolCallTimeoutMs),
+    oauth: server.oauth === true,
     failOnStartupError: server.failOnStartupError,
   }
 }
@@ -205,6 +211,7 @@ export function draftToSubmission(draft: McpDraft): McpSubmission {
       url: draft.url.trim(),
       headers: parseHeaders(draft.headersText),
       toolCallTimeoutMs: parseTimeout(draft.toolCallTimeoutMs),
+      oauth: draft.oauth,
       failOnStartupError: draft.failOnStartupError,
     },
   }

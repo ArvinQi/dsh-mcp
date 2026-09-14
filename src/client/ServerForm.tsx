@@ -228,6 +228,16 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
       <label className={css.checkRow}>
         <input
           type="checkbox"
+          checked={draft.oauth}
+          onChange={(event) => update({ oauth: event.currentTarget.checked })}
+        />
+        {t('oauthAuth')}
+      </label>
+      <p className={css.hint}>{t('oauthAuthHint')}</p>
+
+      <label className={css.checkRow}>
+        <input
+          type="checkbox"
           checked={draft.failOnStartupError}
           onChange={(event) => update({ failOnStartupError: event.currentTarget.checked })}
         />

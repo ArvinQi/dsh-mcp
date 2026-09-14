@@ -77,6 +77,7 @@ export function serversToJsonText(servers: readonly McpServerView[]): string {
     }
     entry.toolCallTimeoutMs = server.toolCallTimeoutMs
     entry.failOnStartupError = server.failOnStartupError
+    if (server.oauth === true) entry.oauth = true
     entry.env = server.env.map(row => row.secret
       ? { name: row.name, secret: true, configured: row.configured }
       : { name: row.name, secret: false, ...(row.value !== undefined && row.value.length > 0 ? { value: row.value } : {}) })
@@ -150,6 +151,7 @@ export function parseServersJson(text: string): { ok: true; servers: readonly Se
       url: typeof cfg.url === 'string' ? cfg.url : '',
       headers: cfg.headers,
       toolCallTimeoutMs: typeof cfg.toolCallTimeoutMs === 'number' ? cfg.toolCallTimeoutMs : 60000,
+      oauth: cfg.oauth === true,
       failOnStartupError: cfg.failOnStartupError !== false,
     }
     servers.push({ server, env })

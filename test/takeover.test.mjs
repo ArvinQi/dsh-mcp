@@ -308,3 +308,50 @@ test("a declaration without an id cannot be taken over", async () => {
 		rmSync(home, { recursive: true, force: true });
 	}
 });
+
+test("OAuth is an explicit switch and automatic authorization fires once per server", async () => {
+	const context = await bootManager({ command: process.execPath });
+	try {
+		const service = context.service;
+		const staticToken = { transport: "streamable-http", headers: { "x-bbzai-mcp-token": "ADA_TOKEN" } };
+		assert.equal(service.wantsOAuthProvider(staticToken), false, "the switch defaults to off");
+		assert.equal(service.wantsOAuthProvider({ ...staticToken, oauth: false }), false, "a static-token server gets no provider");
+		assert.equal(service.wantsOAuthProvider({ ...staticToken, oauth: true }), true, "only the explicit switch enables it");
+		assert.equal(service.wantsOAuthProvider({ transport: "stdio", oauth: true }), false, "stdio never needs the provider");
+		assert.equal(service.claimAutoBrowser("x"), true, "the first automatic attempt may open the browser");
+		assert.equal(service.claimAutoBrowser("x"), false, "later automatic attempts must not reopen it");
+		assert.equal(service.claimAutoBrowser("y"), true, "the budget is per server");
+	} finally {
+		await context.cleanup();
+	}
+});
+
+test("the OAuth switch survives a save", async () => {
+	const context = await bootManager({ command: process.execPath });
+	try {
+		const service = context.service;
+		const draft = {
+			serverName: "switched",
+			transport: "streamable-http",
+			enabled: false,
+			command: "",
+			args: [],
+			cwd: "",
+			url: "http://127.0.0.1:9/mcp",
+			headers: [{ name: "x-bbzai-mcp-token", value: "ADA_TOKEN" }],
+			toolCallTimeoutMs: 60000,
+			failOnStartupError: false,
+			oauth: false
+		};
+		const created = await service.upsert({ server: draft, env: [] });
+		assert.equal(created.ok, true, created.ok ? "" : created.error.message);
+		assert.equal(created.server.oauth, false);
+		const saved = await service.upsert({ id: created.server.id, server: { ...draft, oauth: true }, env: [] });
+		assert.equal(saved.ok, true, saved.ok ? "" : saved.error.message);
+		assert.equal(saved.server.oauth, true, "the switch is stored");
+		const listed = (await service.list()).servers.find((server) => server.serverName === "switched");
+		assert.equal(listed.oauth, true, "the switch survives a reload of the list");
+	} finally {
+		await context.cleanup();
+	}
+});

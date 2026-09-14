@@ -7,6 +7,14 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.11.1] - 2026-09-13
+
+### 修复
+
+- **OAuth 改为显式开关，不再凭请求头猜测（停止反复弹出浏览器授权）**：此前规则是"streamable-http 且没有 `Authorization` 头 → 挂 OAuth provider"，于是用静态 token/自定义头（`x-bbzai-mcp-token`、`X-Mcp-Token`、`Private-Token`）认证的服务器也被当成 OAuth 服务器。这类服务器返回 401 时（token 失效、网关挑战等），SDK 会要求授权 → 插件打开浏览器并起回环回调（`127.0.0.1:<port>/callback`），而该流程永远无法让它们通过 → 每次重连/重挂载就再弹一次。现在服务器配置新增 **`oauth: true`** 开关（设置页勾选「使用 OAuth 授权」，默认关；接管声明时若该声明没有 `Authorization` 头则默认勾上，之后仍可修改）
+- **升级自动迁移**：已存在 OAuth 凭据（token 或 client 注册记录）的服务器会保留 `oauth: true`，其余一律关闭——因此**现有真正需要 OAuth 的服务器不受影响，误判的那批立刻停止弹窗**
+- **自动弹窗熔断**：同一服务器**每个进程最多自动打开一次**浏览器授权；之后的自动尝试不再弹窗，改为返回带授权链接的错误（沿用 1.8.0 的能力），手动点「测试连接」仍可随时发起授权
+
 ## [1.11.0] - 2026-09-13
 
 ### 新增

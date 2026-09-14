@@ -36,6 +36,7 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_list_result$schema = z.object({
 })).readonly(),
   'toolCallTimeoutMs': z.number().readonly(),
   'failOnStartupError': z.boolean().readonly(),
+  'oauth': z.boolean().readonly().optional(),
   'status': z.object({
   'phase': z.union([z.literal("failed"), z.literal("stopped"), z.literal("mounting"), z.literal("live")]).readonly(),
   'tools': z.array(z.string()).readonly(),
@@ -82,6 +83,7 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_test_parameter_0$schema = z.object
 })).readonly(),
   'toolCallTimeoutMs': z.number().readonly(),
   'failOnStartupError': z.boolean().readonly(),
+  'oauth': z.boolean().readonly().optional(),
 }).readonly(),
   'env': z.array(z.object({
   'name': z.string().readonly(),
@@ -119,6 +121,7 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_upsert_parameter_0$schema = z.obje
 })).readonly(),
   'toolCallTimeoutMs': z.number().readonly(),
   'failOnStartupError': z.boolean().readonly(),
+  'oauth': z.boolean().readonly().optional(),
 }).readonly(),
   'env': z.array(z.object({
   'name': z.string().readonly(),
@@ -149,6 +152,7 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_upsert_result$schema = z.union([z.
 })).readonly(),
   'toolCallTimeoutMs': z.number().readonly(),
   'failOnStartupError': z.boolean().readonly(),
+  'oauth': z.boolean().readonly().optional(),
   'status': z.object({
   'phase': z.union([z.literal("failed"), z.literal("stopped"), z.literal("mounting"), z.literal("live")]).readonly(),
   'tools': z.array(z.string()).readonly(),
@@ -191,6 +195,7 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_upsertJson_parameter_0$schema = z.
 })).readonly()]).readonly().optional(),
   'toolCallTimeoutMs': z.number().readonly().optional(),
   'failOnStartupError': z.boolean().readonly().optional(),
+  'oauth': z.boolean().readonly().optional(),
 }).readonly(),
   'env': z.array(z.object({
   'name': z.string().readonly(),
@@ -226,6 +231,7 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_upsertJson_result$schema = z.union
 })).readonly(),
   'toolCallTimeoutMs': z.number().readonly(),
   'failOnStartupError': z.boolean().readonly(),
+  'oauth': z.boolean().readonly().optional(),
   'status': z.object({
   'phase': z.union([z.literal("failed"), z.literal("stopped"), z.literal("mounting"), z.literal("live")]).readonly(),
   'tools': z.array(z.string()).readonly(),
@@ -347,6 +353,7 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_adopt_result$schema = z.union([z.o
 })).readonly(),
   'toolCallTimeoutMs': z.number().readonly(),
   'failOnStartupError': z.boolean().readonly(),
+  'oauth': z.boolean().readonly().optional(),
   'status': z.object({
   'phase': z.union([z.literal("failed"), z.literal("stopped"), z.literal("mounting"), z.literal("live")]).readonly(),
   'tools': z.array(z.string()).readonly(),

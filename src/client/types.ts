@@ -44,6 +44,8 @@ export interface McpServerInput {
   readonly url: string
   readonly headers: readonly McpHeaderEntry[]
   readonly toolCallTimeoutMs: number
+  /** Explicit OAuth switch: only then does the Host attach an OAuth provider. */
+  readonly oauth: boolean
   readonly failOnStartupError: boolean
 }
 
@@ -86,6 +88,8 @@ export interface McpServerView {
   readonly env: readonly McpEnvVarView[]
   readonly toolCallTimeoutMs: number
   readonly failOnStartupError: boolean
+  /** Explicit OAuth switch of a managed row (absent for declared rows). */
+  readonly oauth?: boolean
   readonly status: McpServerStatus
   /** `plugin` = stored and mounted here; `cordis` = declared in a patch layer. */
   readonly source?: McpServerSource

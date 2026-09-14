@@ -73,6 +73,7 @@ function viewToDraft(server: McpServerView): McpDraft {
     url: server.url,
     headersText: server.headers.map(header => `${header.name}: ${header.value}`).join('\n'),
     toolCallTimeoutMs: String(server.toolCallTimeoutMs),
+    oauth: server.oauth === true,
     failOnStartupError: server.failOnStartupError,
   }
 }

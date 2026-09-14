@@ -2,6 +2,8 @@
 
 [![dshfind](https://dshfind.com/api/badge/ArvinQi/dsh-mcp?lang=en)](https://dshfind.com/en/plugins/ArvinQi/dsh-mcp?ref=badge)
 
+> **Supported DSH version**: `dsh 0.1.5-rc.1` — developed and verified on `0.1.5-rc.1`, declared in `package.json` → `dsh.supported`. When the DSH and plugin versions do not match, the Settings page shows a diagnosis (check the registration row → restart `dsh web` → hard-refresh → upgrade both sides).
+
 ![Settings preview](static/snapshot.en.webp)
 
 ## Why dsh-mcp?
@@ -297,6 +299,9 @@ Check in order:
   reinstalling (link install).
 - Configuration changes (bundle additions/removals, new plugin rows) require restarting `dsh web` to enter
   the client roster.
+- **Every release must declare its supported DSH version**: add a
+  `- **Supported DSH version**: dsh <version>` line to the CHANGELOG entry and the GitHub Release notes, and
+  update `package.json` → `dsh.supported` plus the "Supported DSH version" note at the top of this README.
 
 ## Changelog
 

@@ -7,6 +7,11 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Compatibility
+
+- **Supported DSH version**: **dsh `0.1.5-rc.1`** — developed and verified on `0.1.5-rc.1` (declared in `package.json` → `dsh.supported`). When the DSH and plugin versions do not match, the Settings page reports a diagnosis (check the `cordis.patch.yml` row → restart `dsh web` → hard-refresh → upgrade both sides).
+- **Release convention**: every version entry states `- **Supported DSH version**: dsh <version>`, mirrored in the GitHub Release notes.
+
 ## [1.11.1] - 2026-09-13
 
 ### Fixed

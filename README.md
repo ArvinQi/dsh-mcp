@@ -4,6 +4,8 @@
 
 [![dshfind](https://dshfind.com/api/badge/ArvinQi/dsh-mcp?lang=zh)](https://dshfind.com/zh/plugins/ArvinQi/dsh-mcp?ref=badge)
 
+> **支持版本**：`dsh 0.1.5-rc.1` —— 本插件在 `0.1.5-rc.1` 上开发与验证，`package.json` → `dsh.supported` 同步声明。DSH 与插件两侧版本不匹配时，设置页会给出排查诊断（检查注册行 → 重启 `dsh web` → 硬刷新 → 同步升级）。
+
 ![设置页预览](static/snapshot.webp)
 
 ## 为什么用 dsh-mcp？
@@ -283,5 +285,7 @@ dsh plugin --profile web add link:<本仓库绝对路径>
 - 浏览器半部改 `src/client/*` 后重新 `node scripts/build.mjs`；host 半部改动无需重装
   （link 安装直接生效）。
 - 配置变更（bundles 增删、新插件行）需重启 `dsh web` 才进入 client roster。
+- **每次发版都必须声明支持的 DSH 版本**：在 CHANGELOG 对应条目与 GitHub Release notes 里加一行
+  `- **支持版本**：dsh <版本>`，并同步更新 `package.json` 的 `dsh.supported` 与 README 顶部的「支持版本」。
 
 [![dshfind](https://dshfind.com/api/card/ArvinQi/dsh-mcp?lang=zh)](https://dshfind.com/zh/plugins/ArvinQi/dsh-mcp?ref=badge)

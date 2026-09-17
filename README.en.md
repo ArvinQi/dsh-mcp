@@ -2,7 +2,7 @@
 
 [![dshfind](https://dshfind.com/api/badge/ArvinQi/dsh-mcp?lang=en)](https://dshfind.com/en/plugins/ArvinQi/dsh-mcp?ref=badge)
 
-> **Supported DSH version**: `dsh 0.1.5-rc.1` — developed and verified on `0.1.5-rc.1`, declared in `package.json` → `dsh.supported`. When the DSH and plugin versions do not match, the Settings page shows a diagnosis (check the registration row → restart `dsh web` → hard-refresh → upgrade both sides).
+> **Supported DSH version**: `dsh 0.1.6-alpha.1` — developed and verified on `0.1.6-alpha.1`, declared in `package.json` → `dsh.supported`. When the DSH and plugin versions do not match, the Settings page shows a diagnosis (check the registration row → restart `dsh web` → hard-refresh → upgrade both sides).
 
 ![Settings preview](static/snapshot.en.webp)
 

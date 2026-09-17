@@ -9,8 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Compatibility
 
-- **Supported DSH version**: **dsh `0.1.5-rc.1`** — developed and verified on `0.1.5-rc.1` (declared in `package.json` → `dsh.supported`). When the DSH and plugin versions do not match, the Settings page reports a diagnosis (check the `cordis.patch.yml` row → restart `dsh web` → hard-refresh → upgrade both sides).
+- **Supported DSH version**: **dsh `0.1.6-alpha.1`** — developed and verified on `0.1.6-alpha.1` (declared in `package.json` → `dsh.supported`). When the DSH and plugin versions do not match, the Settings page reports a diagnosis (check the `cordis.patch.yml` row → restart `dsh web` → hard-refresh → upgrade both sides).
 - **Release convention**: every version entry states `- **Supported DSH version**: dsh <version>`, mirrored in the GitHub Release notes.
+
+## [1.12.0] - 2026-09-17
+
+- **Supported DSH version**: **dsh `0.1.6-alpha.1`**
+
+### Changed
+
+- **Migrated to the official split MCP SDK 2.0 packages**: since DSH `0.1.6-alpha.1`, the in-box `dsh-mcp-client` derives from `@modelcontextprotocol/{client,server,node}@2.0.0` instead of the monolithic `@modelcontextprotocol/sdk@1.x`, and the old package is no longer a DSH dependency. This plugin migrates with it (`lib/transport.js`, `lib/probe.js`, `lib/mcp-client.js`, `lib/oauth.js`) and declares `@modelcontextprotocol/client@2.0.0` and `zod@^4.2.0` explicitly in `package.json` instead of relying on the host profile's dependency hoisting — without this, DSH `0.1.6-alpha.1` fails the plugin load with `ERR_MODULE_NOT_FOUND: Cannot find package '@modelcontextprotocol/sdk'`, taking the Settings page and tool search down with it
+- **Adapted to two breaking changes in SDK 2.0**: `Client` options no longer accept `authProvider` (the OAuth provider now travels on the **transport**; this plugin's `createTransport` already reads `config.authProvider` and passes it to the transport, so the OAuth flow is unchanged), and `setNotificationHandler`'s first argument is now a **method name** rather than a schema, so the tool-list-changed notification registers as `notifications/tools/list_changed`
+- **Result schemas now come from the new package's `specTypeSchemas`**: `ListToolsResultSchema` → `specTypeSchemas.ListToolsResult`; `ToolListChangedNotificationSchema` is no longer needed since notifications register by method name
+
+### Fixed
+
+- **The "do not open a browser from a tool call" OAuth guard works again**: `startConnection`'s `opts` never carried `url` or `authProvider`, so the branch that should return an authorization link when a stored token is missing or expired never ran — the SDK opened a browser mid-tool-call instead (a single session could open several tabs). `opts` now carries both fields, restoring the documented behavior
 
 ## [1.11.1] - 2026-09-13
 

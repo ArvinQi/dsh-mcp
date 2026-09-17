@@ -9,8 +9,22 @@
 
 ## 兼容性
 
-- **支持版本**：**dsh `0.1.5-rc.1`** —— 本插件在 `0.1.5-rc.1` 上开发与验证（`package.json` → `dsh.supported` 同步声明）。DSH 与插件版本不匹配时，设置页会给出排查诊断（核对 `cordis.patch.yml` 注册行 → 重启 `dsh web` → 硬刷新 → 同步升级）。
+- **支持版本**：**dsh `0.1.6-alpha.1`** —— 本插件在 `0.1.6-alpha.1` 上开发与验证（`package.json` → `dsh.supported` 同步声明）。DSH 与插件版本不匹配时，设置页会给出排查诊断（核对 `cordis.patch.yml` 注册行 → 重启 `dsh web` → 硬刷新 → 同步升级）。
 - **发版约定**：每个版本条目都要声明 `- **支持版本**：dsh <版本>`，并在 GitHub Release notes 中同步。
+
+## [1.12.0] - 2026-09-17
+
+- **支持版本**：**dsh `0.1.6-alpha.1`**
+
+### 变更
+
+- **迁移到官方 MCP SDK 2.0 拆分包**：DSH `0.1.6-alpha.1` 起，框架内的 `dsh-mcp-client` 已从单体包 `@modelcontextprotocol/sdk@1.x` 迁到 `@modelcontextprotocol/{client,server,node}@2.0.0`，旧包不再是 DSH 的依赖。本插件同步迁移 `lib/transport.js`、`lib/probe.js`、`lib/mcp-client.js`、`lib/oauth.js`，并在 `package.json` 显式声明 `@modelcontextprotocol/client@2.0.0` 与 `zod@^4.2.0`，不再依赖宿主 profile 的依赖提升——否则在 DSH `0.1.6-alpha.1` 上会以 `ERR_MODULE_NOT_FOUND: Cannot find package '@modelcontextprotocol/sdk'` 加载失败，设置页与 tool search 一并不可用
+- **适配 SDK 2.0 的两处破坏性变更**：其一，`Client` 选项不再接受 `authProvider`，OAuth provider 改由 **transport** 携带（本插件的 `createTransport` 一直从 `config.authProvider` 读取并传给 transport，因此 OAuth 流程行为不变）；其二，`setNotificationHandler` 的第一个参数由 schema 改为**方法名**，工具列表变更通知改用 `notifications/tools/list_changed`
+- **结果 schema 改从新包的 `specTypeSchemas` 取**：`ListToolsResultSchema` → `specTypeSchemas.ListToolsResult`；`ToolListChangedNotificationSchema` 不再需要（通知按方法名注册）
+
+### 修复
+
+- **OAuth 工具调用的「不弹浏览器」保护恢复生效**：`startConnection` 的 `opts` 一直缺少 `url` 与 `authProvider` 两个字段，于是「已存 token 缺失/过期时不要从工具调用里打开浏览器，改为返回授权链接」这段判断从未触发——实际行为是让 SDK 在工具调用中弹浏览器（同一会话可能连开多个标签）。现在在 `opts` 中补上这两项，行为回到代码注释所述
 
 ## [1.11.1] - 2026-09-13
 

@@ -4,7 +4,7 @@
 
 [![dshfind](https://dshfind.com/api/badge/ArvinQi/dsh-mcp?lang=zh)](https://dshfind.com/zh/plugins/ArvinQi/dsh-mcp?ref=badge)
 
-> **支持版本**：`dsh 0.1.5-rc.1` —— 本插件在 `0.1.5-rc.1` 上开发与验证，`package.json` → `dsh.supported` 同步声明。DSH 与插件两侧版本不匹配时，设置页会给出排查诊断（检查注册行 → 重启 `dsh web` → 硬刷新 → 同步升级）。
+> **支持版本**：`dsh 0.1.6-alpha.1` —— 本插件在 `0.1.6-alpha.1` 上开发与验证，`package.json` → `dsh.supported` 同步声明。DSH 与插件两侧版本不匹配时，设置页会给出排查诊断（检查注册行 → 重启 `dsh web` → 硬刷新 → 同步升级）。
 
 ![设置页预览](static/snapshot.webp)
 

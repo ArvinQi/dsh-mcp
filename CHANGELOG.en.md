@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Compatibility
 
 - **Supported DSH version**: **dsh `0.1.6-alpha.2`** — developed and verified on `0.1.6-alpha.2` (declared in `package.json` → `dsh.supported`). When the DSH and plugin versions do not match, the Settings page reports a diagnosis (check the `cordis.patch.yml` row → restart `dsh web` → hard-refresh → upgrade both sides).
-- **Release convention**: every version entry states `- **Supported DSH version**: dsh <version>`, mirrored in the GitHub Release notes.
+- **Release convention**: every version entry states `- **Supported DSH version**: dsh <version>`, mirrored in the GitHub Release notes. The release body is written in **Chinese** (matching [CHANGELOG.md](CHANGELOG.md)), with heading levels mirroring the entry.
 
 ## [1.12.0] - 2026-09-18
 

@@ -39,7 +39,7 @@
     "url": "https://github.com/ArvinQi/dsh-mcp/issues"
   },
   "dsh": {
-    "supported": "0.1.6-alpha.1",
+    "supported": "0.1.6-alpha.2",
     "client": {
       "inject": [
         "@deepseek-ai/dsh-api-remotes",

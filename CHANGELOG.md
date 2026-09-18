@@ -9,18 +9,19 @@
 
 ## 兼容性
 
-- **支持版本**：**dsh `0.1.6-alpha.1`** —— 本插件在 `0.1.6-alpha.1` 上开发与验证（`package.json` → `dsh.supported` 同步声明）。DSH 与插件版本不匹配时，设置页会给出排查诊断（核对 `cordis.patch.yml` 注册行 → 重启 `dsh web` → 硬刷新 → 同步升级）。
+- **支持版本**：**dsh `0.1.6-alpha.2`** —— 本插件在 `0.1.6-alpha.2` 上开发与验证（`package.json` → `dsh.supported` 同步声明）。DSH 与插件版本不匹配时，设置页会给出排查诊断（核对 `cordis.patch.yml` 注册行 → 重启 `dsh web` → 硬刷新 → 同步升级）。
 - **发版约定**：每个版本条目都要声明 `- **支持版本**：dsh <版本>`，并在 GitHub Release notes 中同步。
 
 ## [1.12.0] - 2026-09-17
 
-- **支持版本**：**dsh `0.1.6-alpha.1`**
+- **支持版本**：**dsh `0.1.6-alpha.2`**
 
 ### 变更
 
 - **迁移到官方 MCP SDK 2.0 拆分包**：DSH `0.1.6-alpha.1` 起，框架内的 `dsh-mcp-client` 已从单体包 `@modelcontextprotocol/sdk@1.x` 迁到 `@modelcontextprotocol/{client,server,node}@2.0.0`，旧包不再是 DSH 的依赖。本插件同步迁移 `lib/transport.js`、`lib/probe.js`、`lib/mcp-client.js`、`lib/oauth.js`，并在 `package.json` 显式声明 `@modelcontextprotocol/client@2.0.0` 与 `zod@^4.2.0`，不再依赖宿主 profile 的依赖提升——否则在 DSH `0.1.6-alpha.1` 上会以 `ERR_MODULE_NOT_FOUND: Cannot find package '@modelcontextprotocol/sdk'` 加载失败，设置页与 tool search 一并不可用
 - **适配 SDK 2.0 的两处破坏性变更**：其一，`Client` 选项不再接受 `authProvider`，OAuth provider 改由 **transport** 携带（本插件的 `createTransport` 一直从 `config.authProvider` 读取并传给 transport，因此 OAuth 流程行为不变）；其二，`setNotificationHandler` 的第一个参数由 schema 改为**方法名**，工具列表变更通知改用 `notifications/tools/list_changed`
 - **结果 schema 改从新包的 `specTypeSchemas` 取**：`ListToolsResultSchema` → `specTypeSchemas.ListToolsResult`；`ToolListChangedNotificationSchema` 不再需要（通知按方法名注册）
+- **重新生成客户端半以适配 Typert `create()` 契约**：`@deepseek-ai/dsh-typert-generator` 生成的 `src/client/remote-contribution.js` 此前只携带 `schema: TypertSchema`，而 DSH 自 `0.1.6-alpha.1` 起把该字段改成 `create: () => TypertSchema`，registry 以 `record.value ??= record.create()` **无条件调用**它——于是设置页的 Remote 描述符在挂载时抛 `create is not a function`，整块 MCP 设置页失效。现已用当前生成器重新生成（21 个 strict 描述符全部补上 `create`）并重建 `lib/client.js`。此前一直没暴露，是因为常驻宿主自 9/14 起跑的是 `0.1.5-rc.1`（当时契约仍是 `schema`）
 
 ### 修复
 

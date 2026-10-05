@@ -26,6 +26,7 @@
 ### 修复
 
 - **OAuth 工具调用的「不弹浏览器」保护恢复生效**：`startConnection` 的 `opts` 一直缺少 `url` 与 `authProvider` 两个字段，于是「已存 token 缺失/过期时不要从工具调用里打开浏览器，改为返回授权链接」这段判断从未触发——实际行为是让 SDK 在工具调用中弹浏览器（同一会话可能连开多个标签）。现在在 `opts` 中补上这两项，行为回到代码注释所述
+- **凭据引用反解在环境变量名含下划线时给出错误的服务器 ID**：`managedServerId()` 用 `lastIndexOf("_")` 从 `DSH_MCP_<serverId>_<name>` 里切分，但 serverId 自身即含下划线（`mcp_` + 12 位十六进制），于是 `TAVILY_API_KEY` 这类名字被切到 `mcp_…_TAVILY_API`，解析结果在表中不存在，凭据经外部途径更新后的自动重挂载被静默跳过。现改为按 ID 的固定形状精确匹配（`managedServerId()` 移至无依赖的 `lib/refs.js`，并补上回归测试）
 
 ## [1.11.1] - 2026-09-13
 

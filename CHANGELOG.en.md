@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **The "do not open a browser from a tool call" OAuth guard works again**: `startConnection`'s `opts` never carried `url` or `authProvider`, so the branch that should return an authorization link when a stored token is missing or expired never ran — the SDK opened a browser mid-tool-call instead (a single session could open several tabs). `opts` now carries both fields, restoring the documented behavior
+- **Credential-reference parsing resolved the wrong server id when the env name contained underscores**: `managedServerId()` split `DSH_MCP_<serverId>_<name>` on `lastIndexOf("_")`, but the serverId itself contains an underscore (`mcp_` + 12 hex chars), so names such as `TAVILY_API_KEY` split into `mcp_…_TAVILY_API`; the resolved id was not in the table, so the automatic remount after an out-of-band credential update was silently skipped. The id is now matched by its exact shape instead (`managedServerId()` moved to the dependency-free `lib/refs.js`, with a regression test)
 
 ## [1.11.1] - 2026-09-13
 

@@ -12,6 +12,19 @@
 - **支持版本**：**dsh `0.1.6-alpha.2`** —— 本插件在 `0.1.6-alpha.2` 上开发与验证（`package.json` → `dsh.supported` 同步声明）。DSH 与插件版本不匹配时，设置页会给出排查诊断（核对 `cordis.patch.yml` 注册行 → 重启 `dsh web` → 硬刷新 → 同步升级）。
 - **发版约定**：每个版本条目都要声明 `- **支持版本**：dsh <版本>`，并在 GitHub Release notes 中同步。Release 正文用**中文**（与本文档一致），标题层级与条目一致。
 
+## [1.12.1] - 2026-10-07
+
+- **支持版本**：**dsh `0.1.6-alpha.2`**
+
+### 修复
+
+- **stdio 服务器现在真的能拿到进程级环境变量（[#11](https://github.com/ArvinQi/dsh-mcp/issues/11)）**：`global_env` 此前只用于 `streamable-http` 的请求头替换，stdio 分支把它整个丢掉；而父进程环境也不是替代通道——`dsh-mcp-client` 会把 `KEY`/`TOKEN`/`SECRET`/`PASSWORD` 形状的父环境变量剥离后再与服务器 env 合并。于是像 `tavily`（`npx -y tavily-mcp`）这类只吃环境变量、且表单不再编辑 per-server env 的 stdio 服务器，只能以「无密钥」状态启动（表现为 `tavily_research` 报 "requires an API key"，而 keyless 的 `tavily_search`/`tavily_extract` 正常）。现在 `toClientConfig()` 的 stdio 分支把 `global_env` 与服务器自身 env 合并后注入子进程，同名时**服务器 env 优先**；设置页提示、README 中英与本文档同步改为「stdio 子进程注入 + HTTP 请求头引用」的实际作用域
+- **凭据引用更新后的自动重挂载恢复正常（[#12](https://github.com/ArvinQi/dsh-mcp/issues/12)）**：`managedServerId()` 用 `lastIndexOf("_")` 从 `DSH_MCP_<serverId>_<变量名>` 反解服务器 id，而 id（`mcp_<12位十六进制>`）与变量名都可能含 `_`：只要变量名带下划线（`TAVILY_API_KEY`、`MY_VAR`）就切错位置、解析出表里不存在的 id，`credentials/reference-updated` 处理器于是静默跳过重挂载——**通过凭据管理界面或其它插件轮换密钥后，服务器继续用旧值直到手动刷新**。现在按 id 的固定格式 `mcp_[0-9a-f]{12}` 精确匹配，并对 `DSH_MCP_ENV_*`（进程级）与 `DSH_MCP_OAUTH_*` 引用保持不解析
+
+### 说明
+
+- 两个修复各配一条回归测试：`test/stdio-env.test.mjs` 通过真实挂载 + 真实子进程读回环境变量（改回旧实现即失败），`test/managed-server-id.test.mjs` 直接读 `lib/index.js` 中发布态的函数做引用解析矩阵
+
 ## [1.12.0] - 2026-09-18
 
 - **支持版本**：**dsh `0.1.6-alpha.2`**

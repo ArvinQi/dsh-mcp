@@ -17,7 +17,7 @@
 **Highlights:**
 
 - **Visual management**: server list / create / edit / delete / test connection / enable-disable / refresh, all in the UI
-- **Process-level environment variables**: a global key-value list (expanded by default, batch-add supported); header values can reference a variable by bare name or `${NAME}` and are substituted at connect time (e.g. `Authorization: Bearer ${TOKEN}`)
+- **Process-level environment variables**: a global key-value list (expanded by default, batch-add supported); injected into every stdio server's child process and referenced by streamable-http header values by bare name or `${NAME}`, substituted at connect time (e.g. `Authorization: Bearer ${TOKEN}`); a per-server env entry wins on collision
 - **Whole-list JSON config**: the "JSON config editor" panel views/edits every server as one JSON array; applying saves immediately (create/update/delete)
 - **Fine-grained tool control**: expand each server to see its tools, all checked by default; uncheck to load only what you need
 - **Image result passthrough**: images returned by MCP tools (screenshots/charts) are projected through the attachment service into model image context, with strict preflight and bounded fallbacks (PR #4)
@@ -240,7 +240,8 @@ Check in order:
 
 **Process env vars** (below the injection mode, expanded by default):
 
-- Configure global key-value pairs referenced by every server's header substitution;
+- Configure global key-value pairs shared by every server: **injected into each stdio server's child
+  process**, and referenced by streamable-http header substitution;
   secret values are stored in the credentials document, a blank value keeps the stored one
 - **process.env wins**: if a variable already exists in the process environment (`process.env`)
   under the same name, that value is used verbatim (name unchanged) at connect/display time and
@@ -248,7 +249,9 @@ Check in order:
   (e.g. `export ADA_TOKEN=...`) then restart `dsh web`
 - Batch-add (paste one `NAME=value` per line) or add rows one by one
 - A header value can reference a variable by **bare name** or **`${NAME}`** (e.g. `Authorization: Bearer ${GITLAB_TOKEN}`),
-  substituted at connect time (priority: server env > process-level env > system environment)
+  substituted at connect time (priority: server env > process-level env > system environment);
+  a stdio child's environment follows the same precedence, so a per-server env entry overrides
+  the process-level value
 
 **JSON config editor** (top-right of the MCP config module):
 

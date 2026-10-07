@@ -1,8 +1,8 @@
 /**
  * Process-level environment-variable editor: a global key-value list shared
- * by every MCP server's header substitution. Values are referenced from
- * server headers as `${NAME}` or by bare name; secret values are stored in
- * the credentials document and never shown back.
+ * by every MCP server — injected into each stdio server's child process, and
+ * referenced from streamable-http header values as `${NAME}` or by bare name.
+ * Secret values are stored in the credentials document and never shown back.
  * @module dsh-mcp/client/GlobalEnvEditor
  */
 

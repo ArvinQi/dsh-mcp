@@ -52,6 +52,7 @@ function declaration(command, serverName = "x", options = {}) {
  * @param options.serverName - the declared server name.
  * @param options.failOnStartupError - whether a failed connect must fail the mount.
  * @param options.externalTools - tool names the fake registry already holds (composition-owned).
+ * @param options.globalEnv - pre-seeded `global_env` rows ([key, row] pairs), as the settings page's own Remote CRUD would leave them.
  */
 async function bootManager(options = {}) {
 	const home = mkdtempSync(join(tmpdir(), "dsh-mcp-takeover-"));
@@ -62,20 +63,23 @@ async function bootManager(options = {}) {
 	const original = declaration(options.command, serverName, options);
 	writeFileSync(patch, original);
 	const records = new Map();
+	const envRecords = new Map(options.globalEnv ?? []);
 	const registered = [];
-	const table = {
-		get: (key) => records.get(key),
-		entries: () => records.entries(),
-		keys: () => records.keys(),
-		put: async (key, value) => { records.set(key, value); },
-		delete: async (key) => records.delete(key)
-	};
+	const tableFor = (map) => ({
+		get: (key) => map.get(key),
+		entries: () => map.entries(),
+		keys: () => map.keys(),
+		put: async (key, value) => { map.set(key, value); },
+		delete: async (key) => map.delete(key)
+	});
+	const table = tableFor(records);
+	const envTable = tableFor(envRecords);
 	const schemas = () => [
 		...(options.externalTools ?? []).map((name) => ({ name })),
 		...registered.map((name) => ({ name }))
 	];
 	const root = new Context();
-	root.provide("storageDomain", { open: async () => ({ table: () => table, close: async () => {} }) });
+	root.provide("storageDomain", { open: async () => ({ table: (name) => name === "global_env" ? envTable : table, close: async () => {} }) });
 	root.provide("credentials", { describe: async () => ({ configured: false }), resolve: async () => undefined });
 	root.provide("tools", {
 		register: (definition) => {
@@ -95,6 +99,7 @@ async function bootManager(options = {}) {
 	return {
 		service,
 		records,
+		envRecords,
 		registered,
 		patch,
 		original,

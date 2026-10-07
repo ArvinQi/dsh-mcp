@@ -12,6 +12,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Supported DSH version**: **dsh `0.1.6-alpha.2`** — developed and verified on `0.1.6-alpha.2` (declared in `package.json` → `dsh.supported`). When the DSH and plugin versions do not match, the Settings page reports a diagnosis (check the `cordis.patch.yml` row → restart `dsh web` → hard-refresh → upgrade both sides).
 - **Release convention**: every version entry states `- **Supported DSH version**: dsh <version>`, mirrored in the GitHub Release notes. The release body is written in **Chinese** (matching [CHANGELOG.md](CHANGELOG.md)), with heading levels mirroring the entry.
 
+## [1.12.1] - 2026-10-07
+
+- **Supported DSH version**: **dsh `0.1.6-alpha.2`**
+
+### Fixed
+
+- **stdio servers now actually receive the process-level environment variables ([#11](https://github.com/ArvinQi/dsh-mcp/issues/11))**: `global_env` was only used for `streamable-http` header substitution — the stdio branch dropped it entirely — and the parent process environment is no substitute, because `dsh-mcp-client` strips `KEY`/`TOKEN`/`SECRET`/`PASSWORD`-shaped names out of the inherited env before merging the server's own. So a stdio server that only reads its key from the environment (such as `tavily`, `npx -y tavily-mcp`) and whose per-server env the form no longer edits could only start keyless (it surfaced as `tavily_research` reporting "requires an API key" while keyless `tavily_search`/`tavily_extract` worked). `toClientConfig()`'s stdio branch now merges `global_env` with the server's own env into the child process, with the **per-server entry winning** on a collision; the settings hint, both READMEs and this document now state the real scope (injected into stdio children *and* available to HTTP header substitution)
+- **Automatic remount after a credential update works again ([#12](https://github.com/ArvinQi/dsh-mcp/issues/12))**: `managedServerId()` recovered the server id from `DSH_MCP_<serverId>_<name>` with `lastIndexOf("_")`, but both the id (`mcp_<12 hex>`) and the variable name may contain `_`: as soon as the name had an underscore (`TAVILY_API_KEY`, `MY_VAR`) it split in the wrong place and produced an id that is not in the table, so the `credentials/reference-updated` handler silently skipped the remount — **rotating a key through the credentials UI or another plugin left the server on its old value until a manual refresh**. It now matches the id's fixed shape (`mcp_[0-9a-f]{12}`) exactly, and keeps `DSH_MCP_ENV_*` (process-level) and `DSH_MCP_OAUTH_*` refs unresolved
+
+### Notes
+
+- Each fix ships with a regression test: `test/stdio-env.test.mjs` spawns a real child through a real mount and reads the environment it received back (it fails against the old implementation), and `test/managed-server-id.test.mjs` runs a ref-resolution matrix against the shipped `lib/index.js` function
+
 ## [1.12.0] - 2026-09-18
 
 - **Supported DSH version**: **dsh `0.1.6-alpha.2`**

@@ -353,8 +353,9 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
             injected={{ envList: props.envList, envSet: props.envSet }}
             t={t}
             onApplied={() => {
-              // New process env may feed header substitution: refresh server
-              // rows (connection attempts re-resolve env) but keep the tool list.
+              // New process env may feed stdio children and header
+              // substitution: refresh server rows (connection attempts
+              // re-resolve env) but keep the tool list.
               refreshServer('')
             }}
           />

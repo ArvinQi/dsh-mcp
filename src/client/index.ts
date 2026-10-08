@@ -52,6 +52,18 @@ interface McpManagerRemote {
     readonly pendingRestart?: boolean
   }>>
   release(request: { readonly serverName: string }): Promise<McpRemoteResult<{ readonly warning?: string }>>
+  oauthStart(request: {
+    readonly id?: McpServerId
+    readonly serverName?: string
+    readonly url?: string
+  }): Promise<McpRemoteResult<{ readonly serverName: string; readonly url: string }>>
+  oauthStatus(request: { readonly serverName: string }): Promise<McpRemoteResult<{
+    readonly serverName: string
+    readonly authorized: boolean
+    readonly pending: boolean
+    readonly url?: string
+    readonly expiresAt?: number
+  }>>
 }
 
 export type { McpSettingsSectionProps, McpManagerInjected } from './McpSettingsSection.tsx'
@@ -191,6 +203,19 @@ export async function apply(ctx: Context): Promise<void> {
       return {
         failure: null,
         ...result.warning === undefined ? {} : { warning: result.warning },
+      }
+    },
+    oauthStart: async (request) => {
+      const result = await unwrap(() => manager.oauthStart(request))
+      return result.url
+    },
+    oauthStatus: async (serverName) => {
+      const result = await unwrap(() => manager.oauthStatus({ serverName }))
+      return {
+        authorized: result.authorized,
+        pending: result.pending,
+        ...result.url === undefined ? {} : { url: result.url },
+        ...result.expiresAt === undefined ? {} : { expiresAt: result.expiresAt },
       }
     },
   })

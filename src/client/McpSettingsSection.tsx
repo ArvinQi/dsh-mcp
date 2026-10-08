@@ -4,7 +4,7 @@ import type {
   McpToolInjectionMode, McpToolsState, McpToolView,
 } from './types.ts'
 import type { InjectFace, PropsLocale, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
-import { McpServerForm, type McpServerFormRemote } from './ServerForm.tsx'
+import { McpServerForm, OAUTH_POLL_MS, type McpServerFormRemote } from './ServerForm.tsx'
 import { ServersJsonEditor, type ServersJsonEntry } from './ServersJsonEditor.tsx'
 import { GlobalEnvEditor, type GlobalEnvRemote } from './GlobalEnvEditor.tsx'
 import type { McpToolControlRemote } from './ToolControlSection.tsx'
@@ -84,7 +84,7 @@ function viewToDraft(server: McpServerView): McpDraft {
  * per-server tool-binding list, or the editor when a draft is open.
  */
 export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
-  const { list, save, remove, test, adopt, release } = props
+  const { list, save, remove, test, adopt, release, oauthStart, oauthStatus } = props
   const state = props.useStore(snapshot => snapshot)
   const { setLoadState, setServers, beginCreate, beginEdit, cancelEdit, updateDraft, setBusy, setTestRunning, setTest } = props.actions
   const t = props.t
@@ -98,9 +98,16 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
   const [jsonOpen, setJsonOpen] = useState(false)
   const [envOpen, setEnvOpen] = useState(true)
   const [adopting, setAdopting] = useState<ReadonlySet<string>>(new Set())
+  const [oauthWaiting, setOauthWaiting] = useState<ReadonlySet<string>>(new Set())
   const [actionError, setActionError] = useState<string | null>(null)
   const [actionNotice, setActionNotice] = useState<string | null>(null)
   const timersRef = useRef<number[]>([])
+  // The injected face is re-created on every render; the poller reads it
+  // through a ref so its interval is not restarted by unrelated renders.
+  const oauthStatusRef = useRef(oauthStatus)
+  oauthStatusRef.current = oauthStatus
+  const tRef = useRef(t)
+  tRef.current = t
   let inlineForm: ReactNode | null = null
 
   useEffect(() => () => {
@@ -213,6 +220,47 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
     })
   }
 
+  /**
+   * Poll the authorization state of every server with a pending flow, every
+   * 5s. Nothing renders as failed before the host reports tokens; a completed
+   * authorization refreshes the list (the host remounts the server when the
+   * credentials update lands).
+   */
+  useEffect(() => {
+    if (oauthWaiting.size === 0) return
+    const names = [...oauthWaiting]
+    let cancelled = false
+    const tick = async (): Promise<void> => {
+      const results = await Promise.all(names.map(async (name) => {
+        try {
+          return { name, status: await oauthStatusRef.current(name) }
+        } catch (error) {
+          console.error('[dsh-mcp] oauthStatus failed:', error)
+          return { name, status: null }
+        }
+      }))
+      if (cancelled) return
+      const authorized = results
+        .filter(entry => entry.status?.authorized === true)
+        .map(entry => entry.name)
+      if (authorized.length === 0) return
+      setOauthWaiting((prev) => {
+        const next = new Set(prev)
+        for (const name of authorized) next.delete(name)
+        return next
+      })
+      setActionError(null)
+      setActionNotice(tRef.current('oauthAuthorized'))
+      refreshServer('')
+    }
+    void tick()
+    const timer = window.setInterval(() => { void tick() }, OAUTH_POLL_MS)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
+  }, [oauthWaiting])
+
   const runAdopt = async (server: McpServerView): Promise<void> => {
     const giveBack = server.adopted === true
     // Giving a declaration back to a composition that cannot authenticate it
@@ -237,6 +285,26 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
         return next
       })
       load()
+    }
+  }
+
+  /**
+   * Row-level authorization: start (or reuse) the stored server's flow, open
+   * the URL in a new tab — reserved synchronously on the click so the popup is
+   * allowed — and let the 5s poller above detect completion.
+   */
+  const runOAuth = async (server: McpServerView): Promise<void> => {
+    setActionError(null)
+    setActionNotice(null)
+    const tab = window.open('', '_blank')
+    try {
+      const url = await oauthStart({ id: server.id, serverName: server.serverName })
+      if (tab !== null) tab.location.href = url
+      else window.open(url, '_blank', 'noopener')
+      setOauthWaiting(prev => new Set(prev).add(server.serverName))
+    } catch (error) {
+      tab?.close()
+      setActionError(String((error instanceof Error ? error.message : error) ?? error))
     }
   }
 
@@ -297,7 +365,7 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
         test={state.test}
         t={t}
         actions={actions}
-        injected={{ save, remove, test, list }}
+        injected={{ save, remove, test, list, oauthStart, oauthStatus }}
         onSaved={() => {
           // Mounting is asynchronous: refresh again after the connection
           // settles so the badge and tool count reflect the live state without
@@ -430,6 +498,10 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
                         <span className={`${css.badge} ${css.cordis}`}>{t('pendingBadge')}</span>
                       ) : server.conflict ? (
                         <span className={`${css.badge} ${css.cordis}`}>{t('conflictBadge')}</span>
+                      ) : server.status.oauthRequired === true ? (
+                        /* An OAuth server that has not been authorized yet: the
+                           pending state, not a pre-authorization failure. */
+                        <span className={`${css.badge} ${css.oauth}`}>{t('oauthBadgeWaiting')}</span>
                       ) : (
                         <span className={`${css.badge} ${css[server.status.phase]}`}>{t(phaseKey(server.status.phase))}</span>
                       )}
@@ -445,7 +517,9 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
                     ) : null}
                     {server.conflict ? <p className={css.warn}>{t('conflictDeclared')}</p> : null}
                     {server.needsPlugin ? <p className={css.warn}>{t('needsPluginHint')}</p> : null}
-                    {server.status.error ? <p className={css.warn}>{server.status.error}</p> : null}
+                    {server.status.oauthRequired === true ? (
+                      <p className={css.note}>{t('oauthRequiredHint')}</p>
+                    ) : server.status.error ? <p className={css.warn}>{server.status.error}</p> : null}
                     {declared ? <p className={css.note}>{t('readOnlyHint')}</p> : null}
                     {server.stale ? <p className={css.note}>{t('staleMirror')}</p> : null}
                     {server.skipReason === 'js-expression' ? <p className={css.warn}>{t('skipJsExpr')}</p> : null}
@@ -458,6 +532,13 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
                         {server.enabled ? t('disable') : t('enabled')}
                       </button>
                     )}
+                    {/* OAuth servers get the button that opens the authorization
+                        page; the status is polled every 5s until tokens land. */}
+                    {!declared && !server.conflict && !server.pendingTakeover && server.oauth === true && server.oauthAuthorized !== true ? (
+                      <button type="button" onClick={() => void runOAuth(server)}>
+                        {oauthWaiting.has(server.serverName) ? t('oauthChecking') : t('oauthAuthorize')}
+                      </button>
+                    ) : null}
                     {declared ? null : (
                       <button type="button" disabled={isRefreshing} onClick={() => refreshServer(server.serverName)}>
                         {isRefreshing ? t('refreshing') : t('refresh')}

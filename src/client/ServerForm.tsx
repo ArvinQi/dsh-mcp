@@ -1,5 +1,7 @@
-import { useState, type ReactNode } from 'react'
-import type { McpManagerFailure, McpServerId, McpServerView } from './types.ts'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import type {
+  McpManagerFailure, McpOAuthStartRequest, McpOAuthStatus, McpServerId, McpServerView,
+} from './types.ts'
 import type {
   McpDraft, McpTestOutcome,
 } from './mcp-store.ts'
@@ -7,12 +9,19 @@ import { parseArgs } from './mcp-store.ts'
 import type { McpSettingsLocaleKey } from './locales.ts'
 import css from './ServerForm.module.css'
 
+/** Poll interval of the authorization status while a flow is pending. */
+export const OAUTH_POLL_MS = 5000
+
 /** The Remote verbs the editor needs; structurally the section's inject face. */
 export interface McpServerFormRemote {
   save: (draft: McpDraft) => Promise<McpManagerFailure | null>
   remove: (id: McpServerId) => Promise<McpManagerFailure | null>
   test: (draft: McpDraft) => Promise<McpTestOutcome>
   list: () => Promise<readonly McpServerView[]>
+  /** Start (or reuse) an OAuth flow; resolves with the authorization URL. */
+  oauthStart: (request: McpOAuthStartRequest) => Promise<string>
+  /** Poll one server's authorization state (never called before the user starts a flow). */
+  oauthStatus: (serverName: string) => Promise<McpOAuthStatus>
 }
 
 /** Store actions the editor drives. */
@@ -42,20 +51,93 @@ export interface McpServerFormProps {
 export function McpServerForm(props: McpServerFormProps): ReactNode {
   const { draft, busy, testRunning, test, t, actions, injected, onSaved } = props
   const [saveError, setSaveError] = useState<string | null>(null)
+  /** Authorization flow state of the current draft. */
+  const [oauthPhase, setOauthPhase] = useState<'idle' | 'starting' | 'waiting' | 'authorized'>('idle')
+  const [oauthUrl, setOauthUrl] = useState<string | null>(null)
+  const [oauthError, setOauthError] = useState<string | null>(null)
+  // The section re-creates the injected object on every render; keep the latest
+  // one in a ref so the 5s poller below is not restarted by unrelated renders.
+  const injectedRef = useRef(injected)
+  injectedRef.current = injected
 
   const update = (patch: Partial<McpDraft>): void => {
     setSaveError(null)
     actions.updateDraft(patch)
   }
 
+  // Authorization is keyed by serverName: a different server (or a renamed
+  // draft) starts from a clean state.
+  useEffect(() => {
+    setOauthPhase('idle')
+    setOauthUrl(null)
+    setOauthError(null)
+  }, [draft.id, draft.serverName])
+
+  // Poll the authorization status every 5s while a flow is pending — never
+  // report a failure before the user authorized; a failed poll just waits on.
+  useEffect(() => {
+    if (oauthPhase !== 'waiting') return
+    const serverName = draft.serverName.trim()
+    if (serverName.length === 0) return
+    let cancelled = false
+    const tick = async (): Promise<void> => {
+      try {
+        const status = await injectedRef.current.oauthStatus(serverName)
+        if (!cancelled && status.authorized) setOauthPhase('authorized')
+      } catch (error) {
+        console.error('[dsh-mcp] oauthStatus failed:', error)
+      }
+    }
+    void tick()
+    const timer = window.setInterval(() => { void tick() }, OAUTH_POLL_MS)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
+  }, [oauthPhase, draft.serverName])
+
   const errorText = (error: unknown): string =>
     error instanceof Error ? error.message : String(error)
+
+  /**
+   * Open the authorization page for this draft: the host starts (or reuses)
+   * the loopback flow, this button opens the returned URL in a new tab, and
+   * the effect above polls the status until the tokens land.
+   */
+  const startOAuth = async (): Promise<void> => {
+    setOauthError(null)
+    setOauthPhase('starting')
+    // Reserve the tab synchronously: the click is the user gesture, whereas
+    // window.open after the Remote round trip may be popup-blocked.
+    const tab = window.open('', '_blank')
+    try {
+      const url = await injected.oauthStart({
+        ...draft.id === null ? {} : { id: draft.id },
+        serverName: draft.serverName.trim(),
+        url: draft.url.trim(),
+      })
+      setOauthUrl(url)
+      if (tab !== null) tab.location.href = url
+      else window.open(url, '_blank', 'noopener')
+      setOauthPhase('waiting')
+    } catch (error) {
+      tab?.close()
+      console.error('[dsh-mcp] oauthStart failed:', error)
+      setOauthError(`${t('oauthStartFailed')}: ${errorText(error)}`)
+      setOauthPhase('idle')
+    }
+  }
 
   const runTest = async (): Promise<void> => {
     setSaveError(null)
     actions.setTestRunning(true)
     try {
-      actions.setTest(await injected.test(draft))
+      const outcome = await injected.test(draft)
+      actions.setTest(outcome)
+      // The probe only reached the authorization step: the host already keeps
+      // the callback listener open, so wait for the user instead of showing a
+      // pre-authorization failure.
+      if (outcome.probe.ok === false && outcome.probe.oauthRequired === true) setOauthPhase('waiting')
     } catch (error) {
       console.error('[dsh-mcp] test failed:', error)
       actions.setTest(null)
@@ -235,6 +317,29 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
       </label>
       <p className={css.hint}>{t('oauthAuthHint')}</p>
 
+      {draft.oauth && !stdio ? (
+        <div className={css.oauthPanel}>
+          <div className={css.oauthRow}>
+            <button type="button" disabled={oauthPhase === 'starting'} onClick={() => void startOAuth()}>
+              {t('oauthOpen')}
+            </button>
+            {oauthPhase === 'waiting' ? (
+              <span className={css.oauthWaiting} role="status">{t('oauthWaiting')}</span>
+            ) : null}
+            {oauthPhase === 'authorized' ? (
+              <span className={css.oauthOk} role="status">{t('oauthAuthorized')}</span>
+            ) : null}
+          </div>
+          {oauthUrl !== null ? (
+            <p className={css.muted}>
+              {t('oauthLinkFallback')}{' '}
+              <a href={oauthUrl} target="_blank" rel="noreferrer">{oauthUrl}</a>
+            </p>
+          ) : null}
+          {oauthError !== null ? <p className={css.error} role="alert">{oauthError}</p> : null}
+        </div>
+      ) : null}
+
       <label className={css.checkRow}>
         <input
           type="checkbox"
@@ -254,13 +359,19 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
       </label>
 
       {test !== null ? (
-        <p className={`${css.testResult} ${probe !== undefined && probe.ok ? css.testOk : css.testFail}`} role="status">
-          {probe !== undefined && probe.ok
-            ? `${t('testOk')} (${probe.tools.length} ${t('toolCount')}, ${test.elapsedMs}ms)`
-            : probe !== undefined && !probe.ok
-              ? `${t('testFail')}: ${probe.message}`
-              : t('testUnknown')}
-        </p>
+        probe !== undefined && !probe.ok && probe.oauthRequired === true ? (
+          // Pending authorization is a waiting state, not a failure; once
+          // authorized the panel above reports success and this clears.
+          oauthPhase === 'authorized' ? null : <p className={css.oauthRequired} role="status">{t('oauthRequired')}</p>
+        ) : (
+          <p className={`${css.testResult} ${probe !== undefined && probe.ok ? css.testOk : css.testFail}`} role="status">
+            {probe !== undefined && probe.ok
+              ? `${t('testOk')} (${probe.tools.length} ${t('toolCount')}, ${test.elapsedMs}ms)`
+              : probe !== undefined && !probe.ok
+                ? `${t('testFail')}: ${probe.message}`
+                : t('testUnknown')}
+          </p>
+        )
       ) : null}
 
       {testRunning && draft.transport === 'streamable-http' ? (

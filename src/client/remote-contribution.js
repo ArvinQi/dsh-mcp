@@ -37,10 +37,12 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_list_result$schema = z.object({
   'toolCallTimeoutMs': z.number().readonly(),
   'failOnStartupError': z.boolean().readonly(),
   'oauth': z.boolean().readonly().optional(),
+  'oauthAuthorized': z.boolean().readonly().optional(),
   'status': z.object({
   'phase': z.union([z.literal("failed"), z.literal("stopped"), z.literal("mounting"), z.literal("live")]).readonly(),
   'tools': z.array(z.string()).readonly(),
   'error': z.string().readonly().optional(),
+  'oauthRequired': z.boolean().readonly().optional(),
 }).readonly(),
   'source': z.union([z.literal("plugin"), z.literal("cordis")]).readonly().optional(),
   'readOnly': z.boolean().readonly().optional(),
@@ -102,6 +104,7 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_test_result$schema = z.object({
 }), z.object({
   'ok': z.literal(false).readonly(),
   'message': z.string().readonly(),
+  'oauthRequired': z.boolean().readonly().optional(),
 })]).readonly(),
   'elapsedMs': z.number().readonly(),
 })
@@ -153,10 +156,12 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_upsert_result$schema = z.union([z.
   'toolCallTimeoutMs': z.number().readonly(),
   'failOnStartupError': z.boolean().readonly(),
   'oauth': z.boolean().readonly().optional(),
+  'oauthAuthorized': z.boolean().readonly().optional(),
   'status': z.object({
   'phase': z.union([z.literal("failed"), z.literal("stopped"), z.literal("mounting"), z.literal("live")]).readonly(),
   'tools': z.array(z.string()).readonly(),
   'error': z.string().readonly().optional(),
+  'oauthRequired': z.boolean().readonly().optional(),
 }).readonly(),
   'source': z.union([z.literal("plugin"), z.literal("cordis")]).readonly().optional(),
   'readOnly': z.boolean().readonly().optional(),
@@ -232,10 +237,12 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_upsertJson_result$schema = z.union
   'toolCallTimeoutMs': z.number().readonly(),
   'failOnStartupError': z.boolean().readonly(),
   'oauth': z.boolean().readonly().optional(),
+  'oauthAuthorized': z.boolean().readonly().optional(),
   'status': z.object({
   'phase': z.union([z.literal("failed"), z.literal("stopped"), z.literal("mounting"), z.literal("live")]).readonly(),
   'tools': z.array(z.string()).readonly(),
   'error': z.string().readonly().optional(),
+  'oauthRequired': z.boolean().readonly().optional(),
 }).readonly(),
   'source': z.union([z.literal("plugin"), z.literal("cordis")]).readonly().optional(),
   'readOnly': z.boolean().readonly().optional(),
@@ -354,10 +361,12 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_adopt_result$schema = z.union([z.o
   'toolCallTimeoutMs': z.number().readonly(),
   'failOnStartupError': z.boolean().readonly(),
   'oauth': z.boolean().readonly().optional(),
+  'oauthAuthorized': z.boolean().readonly().optional(),
   'status': z.object({
   'phase': z.union([z.literal("failed"), z.literal("stopped"), z.literal("mounting"), z.literal("live")]).readonly(),
   'tools': z.array(z.string()).readonly(),
   'error': z.string().readonly().optional(),
+  'oauthRequired': z.boolean().readonly().optional(),
 }).readonly(),
   'source': z.union([z.literal("plugin"), z.literal("cordis")]).readonly().optional(),
   'readOnly': z.boolean().readonly().optional(),
@@ -392,6 +401,40 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_release_result$schema = z.union([z
   'ok': z.literal(false).readonly(),
   'error': z.object({
   'code': z.union([z.literal("MCP_ADOPT_NOT_DECLARED"), z.literal("MCP_ADOPT_NO_ID"), z.literal("MCP_ADOPT_JS_EXPR"), z.literal("MCP_ADOPT_FAILED"), z.literal("MCP_ADOPT_RELOAD_PENDING"), z.literal("MCP_RELEASE_FAILED")]).readonly(),
+  'message': z.string().readonly(),
+}).readonly(),
+})])
+
+const _deepseek_ai_dsh_mcp_manager_mcpManager_oauthStart_parameter_0$schema = z.object({
+  'id': z.intersection(z.string(), z.unknown()).readonly().optional(),
+  'serverName': z.string().readonly().optional(),
+  'url': z.string().readonly().optional(),
+})
+const _deepseek_ai_dsh_mcp_manager_mcpManager_oauthStart_result$schema = z.union([z.object({
+  'ok': z.literal(true).readonly(),
+  'serverName': z.string().readonly(),
+  'url': z.string().readonly(),
+}), z.object({
+  'ok': z.literal(false).readonly(),
+  'error': z.object({
+  'code': z.union([z.literal("MCP_OAUTH_INVALID"), z.literal("MCP_OAUTH_START_FAILED")]).readonly(),
+  'message': z.string().readonly(),
+}).readonly(),
+})])
+const _deepseek_ai_dsh_mcp_manager_mcpManager_oauthStatus_parameter_0$schema = z.object({
+  'serverName': z.string().readonly(),
+})
+const _deepseek_ai_dsh_mcp_manager_mcpManager_oauthStatus_result$schema = z.union([z.object({
+  'ok': z.literal(true).readonly(),
+  'serverName': z.string().readonly(),
+  'authorized': z.boolean().readonly(),
+  'pending': z.boolean().readonly(),
+  'url': z.string().readonly().optional(),
+  'expiresAt': z.number().readonly().optional(),
+}), z.object({
+  'ok': z.literal(false).readonly(),
+  'error': z.object({
+  'code': z.literal("MCP_OAUTH_INVALID").readonly(),
   'message': z.string().readonly(),
 }).readonly(),
 })])
@@ -687,6 +730,60 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@deepseek-ai/dsh-mcp-manager/types#McpManagerReleaseResult',
         schema: _deepseek_ai_dsh_mcp_manager_mcpManager_release_result$schema,
         create: () => _deepseek_ai_dsh_mcp_manager_mcpManager_release_result$schema,
+      },
+      sourceLocation: {"file":"lib/index.js"},
+    },
+    {
+      id: '@deepseek-ai/dsh-mcp-manager#mcpManager/oauthStart',
+      service: 'mcpManager',
+      namespace: 'mcpManager',
+      method: 'oauthStart',
+      invocation: { kind: 'direct' },
+      parameters: [
+        {
+          name: 'request',
+          wire: 'request',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: '@deepseek-ai/dsh-mcp-manager/types#McpManagerOAuthStartRequest',
+            schema: _deepseek_ai_dsh_mcp_manager_mcpManager_oauthStart_parameter_0$schema,
+            create: () => _deepseek_ai_dsh_mcp_manager_mcpManager_oauthStart_parameter_0$schema,
+          },
+        },
+      ],
+      result: {
+        mode: 'strict',
+        typeSymbol: '@deepseek-ai/dsh-mcp-manager/types#McpManagerOAuthStartResult',
+        schema: _deepseek_ai_dsh_mcp_manager_mcpManager_oauthStart_result$schema,
+        create: () => _deepseek_ai_dsh_mcp_manager_mcpManager_oauthStart_result$schema,
+      },
+      sourceLocation: {"file":"lib/index.js"},
+    },
+    {
+      id: '@deepseek-ai/dsh-mcp-manager#mcpManager/oauthStatus',
+      service: 'mcpManager',
+      namespace: 'mcpManager',
+      method: 'oauthStatus',
+      invocation: { kind: 'direct' },
+      parameters: [
+        {
+          name: 'request',
+          wire: 'request',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: '@deepseek-ai/dsh-mcp-manager/types#McpManagerOAuthStatusRequest',
+            schema: _deepseek_ai_dsh_mcp_manager_mcpManager_oauthStatus_parameter_0$schema,
+            create: () => _deepseek_ai_dsh_mcp_manager_mcpManager_oauthStatus_parameter_0$schema,
+          },
+        },
+      ],
+      result: {
+        mode: 'strict',
+        typeSymbol: '@deepseek-ai/dsh-mcp-manager/types#McpManagerOAuthStatusResult',
+        schema: _deepseek_ai_dsh_mcp_manager_mcpManager_oauthStatus_result$schema,
+        create: () => _deepseek_ai_dsh_mcp_manager_mcpManager_oauthStatus_result$schema,
       },
       sourceLocation: {"file":"lib/index.js"},
     },

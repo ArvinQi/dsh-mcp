@@ -27,6 +27,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 /** Test files that require the DSH module closure at import time. */
 const NEEDS_DSH_CLOSURE = new Set([
   'cordis-servers.test.mjs',
+  'oauth-flow.test.mjs',
   'patch-writer.test.mjs',
   'stdio-env.test.mjs',
   'takeover.test.mjs',

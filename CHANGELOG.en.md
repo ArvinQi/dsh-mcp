@@ -12,6 +12,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Supported DSH version**: **dsh `0.1.6-alpha.2`** — developed and verified on `0.1.6-alpha.2` (declared in `package.json` → `dsh.supported`). When the DSH and plugin versions do not match, the Settings page reports a diagnosis (check whether the bundle is selected → restart `dsh web` → hard-refresh → upgrade both sides).
 - **Release convention**: every version entry states `- **Supported DSH version**: dsh <version>`, mirrored in the GitHub Release notes. The release body is written in **Chinese** (matching [CHANGELOG.md](CHANGELOG.md)), with heading levels mirroring the entry.
 
+## [1.14.0] - 2026-10-08
+
+- **Supported DSH version**: **dsh `0.1.6-alpha.2`**
+
+### Changed
+
+- **HTTPS servers are verified against the system trust store by default**: the host's `streamable-http` connections and its OAuth metadata discovery / dynamic registration / token exchange all went through Node's bundled root store, so intranet hosts (Ctrip Root CA, Zscaler/Sangfor proxy roots — CAs that only live in the OS keychain) failed with `fetch failed` / `UNABLE_TO_VERIFY_LEAF_SIGNATURE` unless `dsh web` was started with `NODE_OPTIONS=--use-system-ca` or `NODE_EXTRA_CA_CERTS`. The new `lib/system-ca.js` merges the operating system's roots into Node's default store at plugin start (`tls.getCACertificates('system')`, keeping every bundled root, idempotent), so HTTPS requests verify exactly what the OS trusts; on older hosts (Node < 24.9, no such API) it falls back to a scoped fetch bound to an undici Agent carrying the system roots. Neither path touches `http` servers or sites that were already trusted. The Q4 troubleshooting and OAuth sections of both READMEs were rewritten accordingly
+- **OAuth is now an "open authorization page" button plus 5s status polling**: the server card and the editor form gained an **Authorize / Open authorization page** button (new `oauthStart` / `oauthStatus` Remotes) which opens the authorization URL in a new tab and then polls the status every 5 seconds; once tokens land, the host remounts through `credentials/reference-updated` as before, the button disappears and the tools appear. Mounts and "Test connection" share one loopback flow (`createToolAuthorizationUrl` now dedupes concurrent requests per server), so mounting first and clicking the button later neither starts a second listener nor fights over the stable port
+
+### Fixed
+
+- **No more "authorization failed" before the user authorized**: an OAuth server used to render a red "mount failed" with the raw error as soon as it needed authorization, and Test connection popped the browser and could block for up to 5 minutes. Now `test` never opens a browser for an OAuth server and returns immediately with an `oauthRequired` marker; the mount records `status.oauthRequired` from a provider callback (the `mcp-client` wrapper replaces the thrown error, so the flag is set before the throw); the page renders that as an "awaiting authorization" badge and hint next to the button and the poller, flipping to authorized only once tokens are stored. The server view gained `oauthAuthorized`: unauthorized rows show the button, authorized ones do not
+
+### Notes
+
+- Added `test/oauth-flow.test.mjs`: a built-in fake OAuth server (RFC 9728 resource metadata + RFC 8414 authorization-server metadata + registration/token endpoints, with `/mcp` always answering a 401 challenge) drives the real SDK flow, covering `oauthStart` payload validation, the `pending → authorized` poll, Test connection reporting `oauthRequired` instead of a failure, and both mount states (`status.oauthRequired` / `oauthAuthorized`)
+- Added `test/system-ca.test.mjs`: it mints a 127.0.0.1 self-signed certificate with openssl, serves HTTPS, and asserts that `fetch` fails before the merge and succeeds after while every bundled root survives (skipped without openssl or on Node < 24.9); added `test/client-bundle.test.mjs`: it loads the built artifact through the shell's `__ModuleLoader__` wire format and asserts the exports plus the new copy/Remotes, so a stale `lib/client.js` fails the suite
+
 ## [1.13.0] - 2026-10-08
 
 - **Supported DSH version**: **dsh `0.1.6-alpha.2`**

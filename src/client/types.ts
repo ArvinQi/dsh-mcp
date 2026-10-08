@@ -66,6 +66,12 @@ export interface McpServerStatus {
   readonly phase: McpMountPhase
   readonly tools: readonly string[]
   readonly error?: string
+  /**
+   * True when the mount only failed because the user still has to authorize:
+   * the page renders "waiting for authorization", never a pre-authorization
+   * failure.
+   */
+  readonly oauthRequired?: boolean
 }
 
 /** Where one server definition came from. */
@@ -90,6 +96,8 @@ export interface McpServerView {
   readonly failOnStartupError: boolean
   /** Explicit OAuth switch of a managed row (absent for declared rows). */
   readonly oauth?: boolean
+  /** Valid stored OAuth tokens exist (managed row with the OAuth switch on). */
+  readonly oauthAuthorized?: boolean
   readonly status: McpServerStatus
   /** `plugin` = stored and mounted here; `cordis` = declared in a patch layer. */
   readonly source?: McpServerSource
@@ -128,7 +136,37 @@ export interface McpProbeToolView {
 /** Probe outcome: successful tool listing or a readable failure. */
 export type McpProbeView =
   | { readonly ok: true; readonly tools: readonly McpProbeToolView[] }
-  | { readonly ok: false; readonly message: string }
+  | {
+      readonly ok: false
+      readonly message: string
+      /**
+       * The probe reached the authorization step: the page shows a pending
+       * state plus the "open authorization page" button instead of a failure.
+       */
+      readonly oauthRequired?: boolean
+    }
+
+/** Authorization state of one OAuth server, as the settings page polls it. */
+export interface McpOAuthStatus {
+  /** Valid stored tokens exist: the flow completed. */
+  readonly authorized: boolean
+  /** A background callback listener is still waiting for the user. */
+  readonly pending: boolean
+  /** Authorization URL of the running pending flow, when there is one. */
+  readonly url?: string
+  /** Access-token expiry (epoch ms) when the token carries one. */
+  readonly expiresAt?: number
+}
+
+/**
+ * What the page sends to start an authorization flow: the draft's server name
+ * and URL, or the id of a stored row the host reads the URL from.
+ */
+export interface McpOAuthStartRequest {
+  readonly id?: McpServerId
+  readonly serverName?: string
+  readonly url?: string
+}
 
 /** Stable failure codes for rejected management operations. */
 export type McpManagerFailureCode =
@@ -142,6 +180,10 @@ export type McpManagerFailureCode =
   | 'MCP_ADOPT_FAILED'
   | 'MCP_ADOPT_RELOAD_PENDING'
   | 'MCP_RELEASE_FAILED'
+  /** OAuth start/status was called with an unusable payload. */
+  | 'MCP_OAUTH_INVALID'
+  /** Discovery/registration or the loopback callback could not be started. */
+  | 'MCP_OAUTH_START_FAILED'
 
 /** Explicit business failure of one management operation. */
 export interface McpManagerFailure {

@@ -25,7 +25,8 @@
 - **图片结果透传**：MCP 工具返回的图片（截图/图表等）经附件服务投影为图片引用进入模型上下文，带严格预检与有界降级文案（PR #4）
 - **双注入模式**：`search`（按需检索，省 token）与 `full`（全量注入）
 - **零 npm 依赖**：直接对接 DeepSeek Harness 内部能力，安装即用
-- **OAuth 认证支持**：`streamable-http` 服务器若走 MCP OAuth（授权码 + PKCE），连接时自动打开浏览器授权；token 与 client 信息持久化、由 SDK 自动刷新（24 小时内活跃自动续期），失效后自动重新授权
+- **OAuth 认证支持**：`streamable-http` 服务器若走 MCP OAuth（授权码 + PKCE），设置页点「OAuth 授权 / 打开授权页面」按钮在浏览器完成授权，本页每 5 秒轮询授权状态；token 与 client 信息持久化、由 SDK 自动刷新（24 小时内活跃自动续期），失效后重新授权。**授权完成前只显示「等待授权」，不报授权失败**
+- **HTTPS 默认按系统证书校验**：内网/公司 CA（只装在系统钥匙串里的根证书）无需再给 `dsh web` 加 `NODE_OPTIONS=--use-system-ca`，插件启动时把系统信任库并入 Node 默认根证书库
 - **三种安装方式**：npm / GitHub git 源 / 本地 link；中英文界面与文档
 
 ## 功能
@@ -34,9 +35,11 @@
   `@deepseek-ai/dsh-mcp-client` 实例、环境变量注入（明文入定义、secret 走 credentials）、
   连接探测（test）。
 - **Web 设置管理页**（client）：Settings → MCP，列表/编辑/删除/测试服务器。
-- **OAuth 认证**（host，`lib/oauth.js`）：`streamable-http` 服务器遇 401 + OAuth 挑战时自动走
-  授权码 + PKCE 流程，打开浏览器授权、回环回调收码、token 持久化并按需自动刷新；
-  测试连接与挂载共用同一份 token。
+- **OAuth 认证**（host，`lib/oauth.js`）：`streamable-http` 服务器遇 401 + OAuth 挑战时走
+  授权码 + PKCE 流程，回环回调收码、token 持久化并按需自动刷新；设置页提供「打开授权页面」
+  按钮（Remote `oauthStart`）与每 5 秒一次的 `oauthStatus` 轮询，测试连接与挂载共用同一份 token。
+- **系统证书校验**（host，`lib/system-ca.js`）：启动时把操作系统信任库的根证书并入 Node 默认库，
+  HTTPS 连接与 OAuth 发现/注册/token 交换因此按系统证书校验（Node < 24.9 时退回 undici Agent 定向 fetch）。
 - **Remote 自挂载**：client 半部在 `apply()` 里自行 `ctx.remote.$mount()` 挂载 `mcpManager`
   命名空间（原实现依赖 api-remotes 的 in-box 修改，独立版不再需要任何 in-box 包改动）。
 - **读取声明式服务器**（host，`lib/cordis-servers.js`）：把 patch 层里原生声明的
@@ -80,8 +83,9 @@ DSH 原生支持在组合里直接声明 MCP 服务器：**一行一台**，`nam
   重新「接管」。
 - **OAuth 是显式开关（1.11.1 起）**：服务器配置里的 `oauth: true`（设置页「使用 OAuth 授权」勾选，默认关）
   才会挂 OAuth provider。**用静态 token 或自定义头认证的服务器不要勾**——否则它返回 401 时会被当成 OAuth
-  挑战，插件会反复打开浏览器授权（并起 `127.0.0.1:<port>/callback` 回环回调）。另外，同一服务器**每个进程
-  最多自动弹一次**浏览器，之后只返回带授权链接的错误；手动「测试连接」仍可随时发起授权。升级时会按已有
+  挑战，起 `127.0.0.1:<port>/callback` 回环回调。授权由设置页的按钮发起（见下节）：挂载阶段同一服务器
+  **每个进程最多自动弹一次**浏览器，未授权时页面显示「等待授权」并每 5 秒轮询状态，不报授权失败；
+  「测试连接」不再自动弹浏览器，而是返回需要授权的标记，由按钮打开授权页。升级时会按已有
   OAuth 凭据自动迁移，真正需要 OAuth 的服务器不受影响。
 - **热重载未提交时的安全降级**：写入停用块后若原生工具 5 秒内没有注销（该 profile 的 patch 热重载未提交，
   例如某个兄弟条目重建失败导致整代回滚），插件会**登记接管但暂不挂载**（管理行标记 `pendingTakeover`），
@@ -102,6 +106,7 @@ dsh-mcp/
 │   ├── patch-writer.js   受管块写入器：接管时在 patch 文件里停用声明行（备份/原子/幂等）
 │   ├── mcp-client.js     vendored MCP 客户端（源自 @deepseek-ai/dsh-mcp-client，含工具列表稳定扩展）
 │   ├── oauth.js          MCP OAuth 客户端提供者（授权码 + PKCE、回环回调、token 持久化）
+│   ├── system-ca.js      系统证书信任：把操作系统根证书并入 Node 默认库（1.14.0）
 │   ├── probe.js          vendored 连接探测（源自 mcp-client/src/probe.ts）
 │   ├── transport.js      vendored 传输工厂（源自 mcp-client/src/transport.ts）
 │   └── client.js         浏览器半部（esbuild 打包，ModuleLoader wire format）
@@ -252,8 +257,9 @@ dsh plugin --profile web add link:<本仓库绝对路径>
   401 被误当成 OAuth 挑战而打开浏览器授权。若你连的是需要静态 token 的服务器，确认请求头
   正确即可；
 - 若 https 内网域名报 `fetch failed` / `unable to verify the first certificate`，是宿主 Node
-  不信任公司内网 CA：用 `NODE_OPTIONS=--use-system-ca` 启动 `dsh web`（或把根证书加入
-  `NODE_EXTRA_CA_CERTS`），再重启宿主与硬刷新浏览器。
+  不信任公司内网 CA。**1.14.0 起插件启动时已自动把系统信任库并入 Node 默认库**（见「OAuth 服务器」下方的
+  系统证书说明），通常无需额外配置；仍失败时再检查系统钥匙串里是否装了该根证书，或临时用
+  `NODE_OPTIONS=--use-system-ca` / `NODE_EXTRA_CA_CERTS` 启动 `dsh web` 兜底，并重启宿主与硬刷新浏览器。
 
 **添加服务器**：
 
@@ -280,11 +286,22 @@ dsh plugin --profile web add link:<本仓库绝对路径>
 
 **OAuth 服务器**（`streamable-http` 走 MCP OAuth，如受 OAuth 保护的网关服务）：
 
-- 只需正常填写 URL 并测试连接；服务器返回 401 + OAuth 挑战时，插件**自动打开浏览器**完成授权
-- 在浏览器中登录/同意后返回 DSH，测试结果自动刷新（「连接成功 + 工具数」）
+- 正常填写 URL 并勾选「使用 OAuth 授权」；保存后面板会出现 **「OAuth 授权」按钮**（编辑页文案为
+  「打开授权页面」），点击后在新标签页完成登录/同意
+- 点完按钮页面进入「等待授权…」，**每 5 秒自动检查一次授权状态**；授权成功前不会显示授权失败
 - token 与 OAuth client 信息持久化在凭据文档（按 `serverName` 隔离），由 MCP SDK 自动刷新
-  （24 小时内活跃自动续期）；失效后自动重新授权，授权一次后挂载与测试复用
-- 首次授权需浏览器交互，测试/连接等待时间放宽至 5 分钟；非 OAuth 服务器不受影响，连接失败即时返回
+  （24 小时内活跃自动续期）；失效后重新授权，授权一次后挂载与测试复用
+- 第一次挂载（`allowBrowserOnMount`，默认开）仍可能自动弹一次浏览器；把 profile 的
+  `allowBrowserOnMount` 设为 `false` 即可完全改为「按钮驱动」。非 OAuth 服务器不受影响，连接失败即时返回
+
+**HTTPS 内网证书**：
+
+- 插件启动时把**操作系统信任库**的根证书并入 Node 默认根证书库（`lib/system-ca.js`），
+  `streamable-http` 连接、OAuth 元数据发现/注册/token 交换因此与浏览器、curl 的信任一致：
+  只要根证书装在系统钥匙串里（公司内网 CA、Zscaler/Sangfor 代理根等），就无需再设置
+  `NODE_OPTIONS=--use-system-ca` / `NODE_EXTRA_CA_CERTS`
+- Node 自带根证书全部保留（并入而非替换，幂等）；宿主 Node 低于 24.9（无 `tls.getCACertificates`）时
+  退回用 undici Agent 携带系统根做定向 fetch，失败则维持原行为
 
 **日常管理**：
 

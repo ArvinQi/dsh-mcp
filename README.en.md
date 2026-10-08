@@ -23,7 +23,8 @@
 - **Image result passthrough**: images returned by MCP tools (screenshots/charts) are projected through the attachment service into model image context, with strict preflight and bounded fallbacks (PR #4)
 - **Two injection modes**: `search` (on-demand, token-saving) and `full` (inject everything)
 - **Zero npm dependencies**: plugs into DeepSeek Harness internals, install and go
-- **OAuth authentication**: for `streamable-http` servers using MCP OAuth (authorization-code + PKCE), the browser opens automatically for authorization on connect; tokens and OAuth client info are persisted and refreshed automatically by the SDK (auto-renewed while active within 24h), with automatic re-authorization after expiry
+- **OAuth authentication**: for `streamable-http` servers using MCP OAuth (authorization-code + PKCE), the settings page has an **Authorize / Open authorization page** button that opens the browser, then polls the authorization status every 5 seconds; tokens and OAuth client info are persisted and refreshed automatically by the SDK (auto-renewed while active within 24h), with re-authorization after expiry. **Nothing is reported as failed before you authorize — only "awaiting authorization"**
+- **HTTPS verified against the system trust store by default**: intranet/corporate CAs (roots installed in the OS keychain) no longer need `NODE_OPTIONS=--use-system-ca` on `dsh web`; the plugin merges the OS store into Node's default root store at startup
 - **Three install paths**: npm / GitHub git source / local link; bilingual UI and docs
 
 Migrated and merged from uncommitted MCP work in the `deepseek-harness` repository:
@@ -47,9 +48,12 @@ Migrated and merged from uncommitted MCP work in the `deepseek-harness` reposito
   - Injection mode: `search` (on-demand, default — the model hot-injects tools via `mcp_tool_search`) and `full` (inject every enabled tool each request).
   - Expandable per-server tool list, all checked by default; unchecking a tool keeps it out of injection. Changes take effect immediately.
 - **OAuth authentication** (host, `lib/oauth.js`): on a 401 + OAuth challenge from a `streamable-http`
-  server, runs the authorization-code + PKCE flow automatically — opens the browser, receives the
-  callback on a loopback server, persists tokens, and refreshes them on demand; test connection and
-  mounts share the same token.
+  server, runs the authorization-code + PKCE flow — receives the callback on a loopback server,
+  persists tokens, and refreshes them on demand; the settings page offers an "open authorization page"
+  button (Remote `oauthStart`) and a 5s `oauthStatus` poll, and test connections share the mount's token.
+- **System certificate verification** (host, `lib/system-ca.js`): at startup the OS trust store's roots
+  are merged into Node's default store, so HTTPS connections and OAuth discovery/registration/token
+  exchange verify against the system store (on Node < 24.9 it falls back to a scoped undici-Agent fetch).
 - **Remote self-mount**: the client half mounts the `mcpManager` Remote namespace itself via `ctx.remote.$mount()` in `apply()`,
   so no in-box package modification is required.
 - **Declared servers are read too** (host, `lib/cordis-servers.js`): `@deepseek-ai/dsh-mcp-client` rows
@@ -80,7 +84,7 @@ Since 1.11.0 those declarations appear in Settings → MCP, badged "cordis decla
 - **Imported into storages as mirrors**: at startup and on every refresh the declarations are imported into the storage domain (id `cordis:<rowId>`, with `origin/declaredIn/declaredRowId`), **import only** — a row created in the plugin is never overwritten; a mirror whose declaration disappeared is **removed automatically** (a mirror is only a copy of a declaration, so an ownerless one must not pile up); a declaration containing a `!!js` expression is skipped and flagged with the reason (its value only resolves inside the Loader). Mirrors are never mounted — the composition owns the mount.
 - **Take over / give back**: clicking "Take over" makes the plugin write an id-targeted `disabled: true` into its own **managed block** in `cordis.patch.yml` (a `.dsh-mcp.bak` backup is taken before the first write; atomic, idempotent, reversible, confined to that block). The declaration releases the `serverName` and the plugin mounts its own row instead — enabling **OAuth authorization, managed credentials, `${VAR}` header substitution and connection tests**. A hard mount failure rolls back automatically (the block is removed and the row returns to mirror state) and reports why; "Give back" hands the mount back to the declaration and deletes the managed row. A declaration without an explicit `id`, or one containing a `!!js` expression, cannot be taken over.
 - **OAuth / placeholder limit (`needsPlugin`)**: a declaration can carry neither an OAuth provider nor `${VAR}` / bare-name placeholder substitution — only the plugin does those. Such a declaration can therefore only work while the plugin owns the mount: the page reports it as **failed with the reason** (not "connecting"), "Give back" makes its tools disappear (the confirmation and the result warning both say so), and taking it over again restores them.
-- **OAuth is an explicit switch (since 1.11.1)**: an OAuth provider is attached only when the server sets `oauth: true` (the form's "Use OAuth authorization" checkbox, off by default). **Do not tick it for servers that authenticate with static tokens or custom headers** — otherwise a 401 is treated as an OAuth challenge and the plugin keeps opening the browser (with its `127.0.0.1:<port>/callback` loopback listener). The plugin also opens the browser **at most once per server per process**; later automatic attempts return the authorization-link error, and "Test connection" can still start one on demand. Upgrading migrates automatically from existing OAuth credentials, so servers that genuinely need OAuth are unaffected.
+- **OAuth is an explicit switch (since 1.11.1)**: an OAuth provider is attached only when the server sets `oauth: true` (the form's "Use OAuth authorization" checkbox, off by default). **Do not tick it for servers that authenticate with static tokens or custom headers** — otherwise a 401 is treated as an OAuth challenge and the plugin starts a `127.0.0.1:<port>/callback` loopback flow. Authorization is started from the settings page's button: a mount still opens the browser **at most once per server per process**, an unauthorized server renders "awaiting authorization" and polls every 5s instead of a failure, and "Test connection" no longer opens a browser — it returns the authorization-required marker and the button opens the page. Upgrading migrates automatically from existing OAuth credentials, so servers that genuinely need OAuth are unaffected.
 - **Safe degradation when the hot reload does not commit**: if the native tools have not unregistered within 5 seconds of writing the disable block (that profile's patch hot reload did not commit — a sibling entry failing its re-apply rolls the whole generation back), the plugin **registers the takeover without mounting** (the managed row is marked `pendingTakeover`); the next dsh start mounts it, and "Give back" reports the same need for a restart. A mount is also always skipped when same-named `mcp__<server>__` tools already exist without a local mount, so the plugin never fights a still-mounted declaration for one name.
 - **Tool search covers them**: search/hot injection and per-tool switches work by `mcp__` prefix across the whole tool set, so declared tools need no extra configuration.
 
@@ -96,6 +100,7 @@ dsh-mcp/
 │   ├── patch-writer.js   managed-block writer: disables a declaration on takeover (backup/atomic/idempotent)
 │   ├── mcp-client.js     vendored MCP client (from @deepseek-ai/dsh-mcp-client, with tool-list stability extension)
 │   ├── oauth.js          MCP OAuth client provider (authorization-code + PKCE, loopback callback, token persistence)
+│   ├── system-ca.js      system CA trust: merges the OS roots into Node's default store (1.14.0)
 │   ├── probe.js          vendored connection probe (from mcp-client/src/probe.ts)
 │   ├── transport.js      vendored transport factory (from mcp-client/src/transport.ts)
 │   └── client.js         browser half (esbuild bundle, ModuleLoader wire format)
@@ -258,8 +263,11 @@ Check in order:
   `Authorization` header, so a 401 is never mistaken for an OAuth challenge that opens the browser.
   For a static-token server, make sure the request headers are correct;
 - If an HTTPS intranet host reports `fetch failed` / `unable to verify the first certificate`, the
-  host Node does not trust the internal CA: start `dsh web` with `NODE_OPTIONS=--use-system-ca`
-  (or add the root cert to `NODE_EXTRA_CA_CERTS`), then restart the host and hard-refresh.
+  host Node does not trust the internal CA. **Since 1.14.0 the plugin merges the system trust store
+  into Node's default store at startup** (see the system-certificate note under "OAuth servers"), so
+  no extra configuration is normally needed; if it still fails, check that the root really is installed
+  in the OS keychain, or fall back to `NODE_OPTIONS=--use-system-ca` / `NODE_EXTRA_CA_CERTS`, then
+  restart the host and hard-refresh.
 
 **Add a server**:
 
@@ -292,16 +300,27 @@ Check in order:
 
 **OAuth servers** (`streamable-http` using MCP OAuth, e.g. OAuth-protected gateway services):
 
-- Just fill in the URL and test the connection; when the server responds with a 401 + OAuth challenge,
-  the plugin **opens the browser automatically** for authorization.
-- Log in / approve in the browser and return to DSH; the test result refreshes automatically
-  ("connection succeeded + tool count").
+- Fill in the URL and tick "Use OAuth authorization"; after saving, the card shows an **Authorize**
+  button ("Open authorization page" in the editor) that opens the login/consent page in a new tab.
+- The page then shows "waiting for authorization" and **checks the status every 5 seconds**; a failure is
+  never reported before you authorize.
 - Tokens and the registered OAuth client are persisted in the credentials document (scoped by `serverName`)
   and refreshed automatically by the MCP SDK (auto-renewed while active within 24h); after authorizing once,
   mounts and later test connections reuse the same token, and an expired token triggers a fresh
-  browser authorization automatically.
-- The first authorization needs browser interaction, so the test/connect wait budget is relaxed to
-  5 minutes; non-OAuth servers are unaffected and fail fast.
+  authorization automatically.
+- The first mount (`allowBrowserOnMount`, on by default) may still open the browser once; set
+  `allowBrowserOnMount: false` in the profile patch to make authorization fully button-driven. Non-OAuth
+  servers are unaffected and fail fast.
+
+**HTTPS intranet certificates**:
+
+- At startup the plugin merges the **operating system trust store** into Node's default root store
+  (`lib/system-ca.js`), so `streamable-http` connections and OAuth discovery/registration/token exchange
+  trust exactly what the browser and curl trust: a root installed in the OS keychain (corporate CA,
+  Zscaler/Sangfor proxy root, ...) needs no `NODE_OPTIONS=--use-system-ca` / `NODE_EXTRA_CA_CERTS`.
+- Every bundled Node root survives (merge, not replace; idempotent); on hosts below Node 24.9 (no
+  `tls.getCACertificates`) it falls back to a scoped undici-Agent fetch carrying the system roots, and
+  keeps the previous behaviour if even that is unavailable.
 
 **Day-to-day management**:
 

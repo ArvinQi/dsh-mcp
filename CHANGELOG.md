@@ -12,6 +12,24 @@
 - **支持版本**：**dsh `0.1.6-alpha.2`** —— 本插件在 `0.1.6-alpha.2` 上开发与验证（`package.json` → `dsh.supported` 同步声明）。DSH 与插件版本不匹配时，设置页会给出排查诊断（核对 bundle 是否已选中 → 重启 `dsh web` → 硬刷新 → 同步升级）。
 - **发版约定**：每个版本条目都要声明 `- **支持版本**：dsh <版本>`，并在 GitHub Release notes 中同步。Release 正文用**中文**（与本文档一致），标题层级与条目一致。
 
+## [1.14.0] - 2026-10-08
+
+- **支持版本**：**dsh `0.1.6-alpha.2`**
+
+### 变更
+
+- **HTTPS 服务器默认按系统证书校验**：宿主的 `streamable-http` 连接、OAuth 元数据发现/动态注册/token 交换此前都走 Node 自带的根证书库，于是内网域名（Ctrip Root CA、Zscaler/Sangfor 代理根等只装在系统钥匙串里的 CA）报 `fetch failed` / `UNABLE_TO_VERIFY_LEAF_SIGNATURE`，必须先给 `dsh web` 加 `NODE_OPTIONS=--use-system-ca` 或 `NODE_EXTRA_CA_CERTS` 才能用。现在新模块 `lib/system-ca.js` 在插件启动时把**操作系统信任库的根证书并入 Node 默认库**（`tls.getCACertificates('system')`，同时保留 Node 自带根，重复调用幂等），HTTPS 请求即按系统证书校验；宿主 Node 较旧（< 24.9，无该 API）时退回用 undici Agent 携带系统根做定向 fetch，两条路径都不影响 `http` 服务器与原本就信任的站点。README 中英的 Q4 排查与 OAuth 章节同步改写
+- **OAuth 改为「打开授权页面」按钮 + 5s 状态轮询**：设置页的服务器卡片与编辑表单新增 **OAuth 授权 / 打开授权页面** 按钮（新增 Remote `oauthStart` / `oauthStatus`），由按钮把授权 URL 在新标签页打开，之后每 5 秒查询一次授权状态；token 落库后宿主照旧经 `credentials/reference-updated` 自动重挂载，按钮消失、工具出现。挂载与「测试连接」共用同一个回环回调流程（`createToolAuthorizationUrl` 增加同服务器并发去重），因此先挂载再点按钮不会重复起监听、不会抢同一个固定端口
+
+### 修复
+
+- **授权完成前不再显示「授权失败」**：此前 OAuth 服务器的挂载/测试在用户尚未授权时就以红色「挂载失败」+ 原文错误呈现，测试连接还会自动弹浏览器并最多阻塞 5 分钟。现在：`test` 对 OAuth 服务器不再自动开浏览器，改为立即返回带 `oauthRequired` 标记的结果；挂载侧由 provider 回调标记 `status.oauthRequired`（`mcp-client` 会包装错误、吞掉稳定错误码，所以标记在抛出前完成）；设置页遇到该标记只显示「等待授权」徽标与提示，配合按钮与轮询，直到 token 落库才转为已授权。列表行新增 `oauthAuthorized` 字段：未授权显示按钮，已授权不再显示
+
+### 说明
+
+- 新增 `test/oauth-flow.test.mjs`：用一个内置的假 OAuth 服务器（RFC 9728 资源元数据 + RFC 8414 授权服务器元数据 + 注册/token 端点，`/mcp` 一律回 401 挑战）真跑 SDK 授权链路，覆盖 `oauthStart` 参数校验、`pending → authorized` 轮询、测试连接返回 `oauthRequired` 而非失败、以及挂载 `status.oauthRequired` / `oauthAuthorized` 两态
+- 新增 `test/system-ca.test.mjs`：用 openssl 现造 127.0.0.1 自签证书起 HTTPS 服务，断言合并前 `fetch` 失败、合并后成功，且 Node 自带根证书全部保留（无 openssl 或 Node < 24.9 的环境自动跳过）；新增 `test/client-bundle.test.mjs`：按 shell 的 `__ModuleLoader__` 线上格式加载构建产物，断言导出与新增文案/Remote，防止 `lib/client.js` 陈旧
+
 ## [1.13.0] - 2026-10-08
 
 - **支持版本**：**dsh `0.1.6-alpha.2`**

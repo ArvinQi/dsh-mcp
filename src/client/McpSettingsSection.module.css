@@ -218,6 +218,11 @@ button:disabled {
   color: var(--dsw-alias-brand-primary);
 }
 
+.badge.oauth {
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 14%, transparent);
+  color: var(--dsw-alias-state-warn-primary);
+}
+
 .note {
   margin: 6px 0 0;
   color: var(--dsw-alias-label-secondary);

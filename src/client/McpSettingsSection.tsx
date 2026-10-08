@@ -221,14 +221,26 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
   }
 
   /**
-   * Poll the authorization state of every server with a pending flow, every
-   * 5s. Nothing renders as failed before the host reports tokens; a completed
+   * Servers the Host itself reports as awaiting authorization: a mount that
+   * only failed because the user still has to authorize, or an interactive
+   * flow the mount opened (`allowBrowserOnMount`). They are polled too, so a
+   * browser authorization completed while the page sat open is noticed within
+   * one poll interval instead of needing a manual refresh.
+   */
+  const hostPendingOAuth = state.servers
+    .filter(server => server.oauth === true && server.status.oauthRequired === true && server.oauthAuthorized !== true)
+    .map(server => server.serverName)
+  const pollKey = [...new Set([...oauthWaiting, ...hostPendingOAuth])].sort().join(',')
+
+  /**
+   * Poll the authorization state of every pending flow every 5s. Nothing
+   * renders as failed before the host reports tokens; a completed
    * authorization refreshes the list (the host remounts the server when the
    * credentials update lands).
    */
   useEffect(() => {
-    if (oauthWaiting.size === 0) return
-    const names = [...oauthWaiting]
+    if (pollKey.length === 0) return
+    const names = pollKey.split(',')
     let cancelled = false
     const tick = async (): Promise<void> => {
       const results = await Promise.all(names.map(async (name) => {
@@ -259,7 +271,7 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
       cancelled = true
       window.clearInterval(timer)
     }
-  }, [oauthWaiting])
+  }, [pollKey])
 
   const runAdopt = async (server: McpServerView): Promise<void> => {
     const giveBack = server.adopted === true

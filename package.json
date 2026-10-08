@@ -1,12 +1,13 @@
 {
   "name": "dsh-mcp",
-  "version": "1.12.1",
+  "version": "1.13.0",
   "description": "MCP 管理界面 + tool search：可视化配置/启停/刷新 MCP 服务器与工具勾选，按需检索（tool search）热注入；工具列表稳定命中缓存、不撑爆上下文。DeepSeek Harness plugin: MCP management UI + tool search — stable tool list, cache-friendly, no context bloat.",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
     ".": "./lib/index.js",
     "./client": "./lib/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
   },
   "files": [
@@ -14,6 +15,7 @@
     "src",
     "scripts",
     "static",
+    "cordis.patch.yml",
     "README.md",
     "README.en.md",
     "CHANGELOG.md",
@@ -40,6 +42,9 @@
   },
   "dsh": {
     "supported": "0.1.6-alpha.2",
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
     "client": {
       "inject": [
         "@deepseek-ai/dsh-api-remotes",

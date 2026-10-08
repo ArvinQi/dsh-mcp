@@ -2,7 +2,7 @@
 
 [![dshfind](https://dshfind.com/api/badge/ArvinQi/dsh-mcp?lang=en)](https://dshfind.com/en/plugins/ArvinQi/dsh-mcp?ref=badge)
 
-> **Supported DSH version**: `dsh 0.1.6-alpha.2` — developed and verified on `0.1.6-alpha.2`, declared in `package.json` → `dsh.supported`. When the DSH and plugin versions do not match, the Settings page shows a diagnosis (check the registration row → restart `dsh web` → hard-refresh → upgrade both sides).
+> **Supported DSH version**: `dsh 0.1.6-alpha.2` — developed and verified on `0.1.6-alpha.2`, declared in `package.json` → `dsh.supported`. When the DSH and plugin versions do not match, the Settings page shows a diagnosis (check whether the bundle is selected → restart `dsh web` → hard-refresh → upgrade both sides).
 
 ![Settings preview](static/snapshot.en.webp)
 
@@ -88,7 +88,8 @@ Since 1.11.0 those declarations appear in Settings → MCP, badged "cordis decla
 
 ```
 dsh-mcp/
-├── package.json          name=dsh-mcp; dsh.client declaration; zero npm dependencies
+├── package.json          name=dsh-mcp; dsh.bundle (auto-registration) and dsh.client declarations; zero npm dependencies
+├── cordis.patch.yml      bundle patch: inserts the plugin row (id/name = dsh-mcp) on install
 ├── lib/
 │   ├── index.js          host half (McpManagerService, built from mcp-manager)
 │   ├── cordis-servers.js reads natively declared MCP servers from the patch layers (1.11.0)
@@ -132,13 +133,20 @@ npm test
 
 ### 1. Install
 
-**Option 1: npm (after publishing)**
+**Option 1: Web UI (recommended)**
+
+DSH Web → **Settings → Plugins**, enter the package name `dsh-mcp` (or the absolute path of a local
+directory) → Install. This runs the same pnpm path as `dsh plugin add`; since 1.13.0 the package
+declares `dsh.bundle`, so installing it registers it as a profile bundle layer automatically (see
+section 2) and no hand-written registration row is needed.
+
+**Option 2: npm (after publishing)**
 
 ```sh
 dsh plugin --profile web add dsh-mcp
 ```
 
-**Option 2: GitHub git source**
+**Option 3: GitHub git source**
 
 ```sh
 dsh plugin --profile web add github:ArvinQi/dsh-mcp
@@ -146,7 +154,7 @@ dsh plugin --profile web add github:ArvinQi/dsh-mcp
 dsh plugin --profile web add git+https://github.com/ArvinQi/dsh-mcp.git
 ```
 
-**Option 3: local development (link)**
+**Option 4: local development (link)**
 
 ```sh
 dsh plugin --profile web add link:<absolute path to this repo>
@@ -158,17 +166,37 @@ dsh plugin --profile web add link:<absolute path to this repo>
 
 ### 2. Registration (all install options)
 
-Append to `$DSH_HOME/profiles/web/cordis.patch.yml` (`$DSH_HOME` defaults to `~/.dsh`):
+**Since 1.13.0 registration is automatic.** The package manifest declares `dsh.bundle.patch`,
+pointing at the shipped `<package dir>/cordis.patch.yml`. On install, DSH writes the package name
+into `dsh.profile.bundles` in `$DSH_HOME/profiles/<profile>/package.json`, and that patch then
+inserts the plugin row (one row provides both the host manager and the client settings page):
 
 ```yaml
+# <package dir>/cordis.patch.yml — ships with the package, applies once the bundle is selected
 - insert:
     - id: dsh-mcp
       name: dsh-mcp
 ```
 
-> ⚠️ **This step is mandatory**: dsh-mcp does not declare `dsh.bundle`, so `dsh plugin add` only
-> installs the package into the profile — **it does not activate the plugin**. Without the
-> registration row the plugin never mounts.
+> ⚠️ Do not insert the same row again in your own `$DSH_HOME/profiles/<profile>/cordis.patch.yml`
+> (or the machine-wide `$DSH_HOME/cordis.patch.yml`): one row id declared by two layers makes the
+> loader fail to compose. Those two files are the **user patch layer**, distinct from the bundle
+> patch that ships inside the package.
+
+To override configuration, use an **id-targeted** entry (the user patch layer applies after every
+bundle layer, and it replaces the whole `config`, so keys you omit fall back to the `Config`
+defaults):
+
+```yaml
+- id: dsh-mcp
+  config:
+    allowBrowserOnMount: true
+```
+
+> Upgrading a profile from an older release (<1.13.0): replace that
+> `- insert: [{ id: dsh-mcp, name: dsh-mcp }]` block with the id-targeted override above, and get
+> `dsh-mcp` into `dsh.profile.bundles` (enable it in the Web Plugins page once `dsh-mcp` shows as
+> installed, or add the name to that array directly).
 
 Then **restart `dsh web`** and **hard-refresh the browser** (`Cmd/Ctrl + Shift + R`):
 
@@ -188,17 +216,19 @@ Then **restart `dsh web`** and **hard-refresh the browser** (`Cmd/Ctrl + Shift +
 
 Check in order:
 
-1. **Is the plugin registered?** Confirm `$DSH_HOME/profiles/web/cordis.patch.yml` has the
-   `- insert: [{ id: dsh-mcp, name: dsh-mcp }]` row (`id`/`name` must exactly match the package
-   name `dsh-mcp`). `dsh plugin add` does not equal activation — **without the registration row
-   the plugin never mounts**.
+1. **Is the plugin row registered?** `dsh.profile.bundles` in
+   `$DSH_HOME/profiles/web/package.json` should contain `dsh-mcp` (the Web Plugins page should show
+   `dsh-mcp` as installed and enabled). Since 1.13.0 the install writes this automatically; for a
+   profile migrated from an older release, follow section 2 — convert the old manual insert into an
+   id-targeted override and select the package into `bundles`. **One row id declared by two layers
+   does not take effect.**
 2. **Did you restart `dsh web`?** Refreshing the browser is not enough — the settings entry comes
    from the client roster, and roster changes require **restarting the process**.
 3. **Did you hard-refresh the browser?** After the restart use `Cmd/Ctrl + Shift + R`
    (Windows/Linux: `Ctrl + Shift + R`); a plain `F5` may load a cached old page.
 4. **Is it installed in the right profile?** Make sure both the install and the registration use
-   the `web` profile (`dsh plugin --profile web add dsh-mcp` +
-   `$DSH_HOME/profiles/web/cordis.patch.yml`); other profiles have their own settings pages.
+   the `web` profile (`dsh plugin --profile web add dsh-mcp` + that profile's
+   `dsh.profile.bundles`); other profiles have their own settings pages.
 5. **Is it the latest version?** npm metadata caching can pin an old version; force the version
    with `dsh plugin --profile web add dsh-mcp@latest` (or `@1.8.0`).
 
@@ -209,9 +239,9 @@ Check in order:
   mix with the new host (typical symptom: `client api: ... 404` or `env is not iterable` — both
   come from mixing versions);
 - An error shaped like `transport failure for /api/mcpManager/list: HTTP 404` means the host did
-  not register the `mcpManager` service: usually the plugin host half is not active (missing
-  cordis.patch.yml row / wrong profile) or the client and host versions disagree. Verify the
-  registration row per Q1, confirm the install targets the `web` profile, restart, and
+  not register the `mcpManager` service: usually the plugin host half is not active (the bundle is
+  not selected in `dsh.profile.bundles`, or the wrong profile was installed) or the client and host
+  versions disagree. Verify `bundles` and the install location per Q1, restart, and
   hard-refresh; if it persists, upgrade both `dsh web` and the plugin to the latest versions.
 
 **Q3: MCP tools do not show up in an agent session?**

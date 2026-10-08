@@ -4,7 +4,7 @@
 
 [![dshfind](https://dshfind.com/api/badge/ArvinQi/dsh-mcp?lang=zh)](https://dshfind.com/zh/plugins/ArvinQi/dsh-mcp?ref=badge)
 
-> **支持版本**：`dsh 0.1.6-alpha.2` —— 本插件在 `0.1.6-alpha.2` 上开发与验证，`package.json` → `dsh.supported` 同步声明。DSH 与插件两侧版本不匹配时，设置页会给出排查诊断（检查注册行 → 重启 `dsh web` → 硬刷新 → 同步升级）。
+> **支持版本**：`dsh 0.1.6-alpha.2` —— 本插件在 `0.1.6-alpha.2` 上开发与验证，`package.json` → `dsh.supported` 同步声明。DSH 与插件两侧版本不匹配时，设置页会给出排查诊断（检查 bundle 是否已选中 → 重启 `dsh web` → 硬刷新 → 同步升级）。
 
 ![设置页预览](static/snapshot.webp)
 
@@ -94,7 +94,8 @@ DSH 原生支持在组合里直接声明 MCP 服务器：**一行一台**，`nam
 
 ```
 dsh-mcp/
-├── package.json          name=dsh-mcp；dsh.client 声明；零 npm dependencies
+├── package.json          name=dsh-mcp；dsh.bundle（自动注册）与 dsh.client 声明；零 npm dependencies
+├── cordis.patch.yml      bundle patch：安装后自动 insert 插件行（id/name = dsh-mcp）
 ├── lib/
 │   ├── index.js          host 半部（McpManagerService，源自 mcp-manager 构建产物）
 │   ├── cordis-servers.js 读取 patch 层原生声明的 MCP 服务器（1.11.0）
@@ -137,13 +138,19 @@ npm test
 
 ### 1. 安装
 
-**方式一：npm（发布到 npm 后）**
+**方式一：Web 界面（推荐）**
+
+DSH Web → **设置 → 插件**，填入包名 `dsh-mcp`（或本地目录的绝对路径）→ 安装。走的是与
+`dsh plugin add` 相同的 pnpm 路径；1.13.0 起包内声明了 `dsh.bundle`，安装即自动注册为
+profile 的 bundle 层（见第 2 节），不再需要手写注册行。
+
+**方式二：npm（发布到 npm 后）**
 
 ```sh
 dsh plugin --profile web add dsh-mcp
 ```
 
-**方式二：GitHub git 源**
+**方式三：GitHub git 源**
 
 ```sh
 dsh plugin --profile web add github:ArvinQi/dsh-mcp
@@ -151,7 +158,7 @@ dsh plugin --profile web add github:ArvinQi/dsh-mcp
 dsh plugin --profile web add git+https://github.com/ArvinQi/dsh-mcp.git
 ```
 
-**方式三：本地开发（link）**
+**方式四：本地开发（link）**
 
 ```sh
 dsh plugin --profile web add link:<本仓库绝对路径>
@@ -161,18 +168,36 @@ dsh plugin --profile web add link:<本仓库绝对路径>
 > symlink（本机开发用，不入库），否则 `link:` 安装的 symlink 被 realpath 后无法解析
 > `@deepseek-ai/*`。
 
-### 2. 注册与生效（三种方式通用）
+### 2. 注册与生效（四种方式通用）
 
-在 `$DSH_HOME/profiles/web/cordis.patch.yml`（`$DSH_HOME` 默认 `~/.dsh`）追加：
+**1.13.0 起自动注册，无需手写注册行**。包内 `package.json` 声明了 `dsh.bundle.patch`，指向随包
+发布的 `<包目录>/cordis.patch.yml`。DSH 在安装时会把包名写入
+`$DSH_HOME/profiles/<profile>/package.json` 的 `dsh.profile.bundles`，该 patch 随即自动 insert
+插件行（host 管理器与 client 设置页由同一行提供）：
 
 ```yaml
+# <包目录>/cordis.patch.yml —— 随包发布，bundle 被选中后自动生效
 - insert:
     - id: dsh-mcp
       name: dsh-mcp
 ```
 
-> ⚠️ **这一步必须手动完成**：dsh-mcp 未声明 `dsh.bundle`，`dsh plugin add` 只负责把包装进
-> profile，**不会自动进入运行组合**。漏掉注册行则插件完全不生效。
+> ⚠️ 不要在自己的 `$DSH_HOME/profiles/<profile>/cordis.patch.yml`（或机器级
+> `$DSH_HOME/cordis.patch.yml`）里再 insert 同一行：同一 id 由两层声明会让 loader 组合失败。
+> 这两个文件是**用户 patch 层**，和包内随包发布的 bundle patch 是两回事。
+
+需要覆盖配置时用 **id-targeted** 条目（用户 patch 层在所有 bundle 层之后应用，且会替换整份
+`config`，未列出的键回落到 `Config` 默认值）：
+
+```yaml
+- id: dsh-mcp
+  config:
+    allowBrowserOnMount: true
+```
+
+> 从旧版（<1.13.0）升级的 profile：把原来那段 `- insert: [{ id: dsh-mcp, name: dsh-mcp }]`
+> 换成上面的 id-targeted 覆盖，并让 `dsh-mcp` 进入 `dsh.profile.bundles`（Web 插件页把
+> `dsh-mcp` 显示为「已安装」后启用，或直接加进该数组）。
 
 然后**重启 `dsh web`**，并**硬刷新浏览器**（`Cmd/Ctrl + Shift + R`）：
 
@@ -190,15 +215,16 @@ dsh plugin --profile web add link:<本仓库绝对路径>
 
 按顺序检查：
 
-1. **是否已注册插件行**：确认 `$DSH_HOME/profiles/web/cordis.patch.yml` 已追加
-   `- insert: [{ id: dsh-mcp, name: dsh-mcp }]`（`id`/`name` 必须与插件包名 `dsh-mcp` 完全一致）。
-   `dsh plugin add` 不等于生效，**没有注册行插件不会挂载**。
+1. **插件行是否已注册**：`$DSH_HOME/profiles/web/package.json` 的 `dsh.profile.bundles` 应含
+   `dsh-mcp`（Web 插件页里 `dsh-mcp` 应显示为「已安装 + 已启用」）。1.13.0 起安装自动写入；
+   旧版手工 insert 的 profile 按第 2 节改成 id-targeted 覆盖并把包选入 bundles——同一 id 由两层
+   声明不会生效。
 2. **是否重启了 `dsh web`**：仅刷新浏览器不够——设置页入口来自 client roster，
    插件集变更必须**重启进程**才进入 roster。
 3. **是否硬刷新了浏览器**：重启后用 `Cmd/Ctrl + Shift + R`（Windows/Linux：`Ctrl + Shift + R`）
    强制刷新；普通 `F5` 可能加载缓存的旧页面。
 4. **是否装到了正确的 profile**：确认安装与注册都在 `web` profile
-   （`dsh plugin --profile web add dsh-mcp` + `$DSH_HOME/profiles/web/cordis.patch.yml`）；
+   （`dsh plugin --profile web add dsh-mcp` + 该 profile 的 `dsh.profile.bundles`）；
    装到其他 profile 则在其他 profile 的设置页查看。
 5. **是否为最新版本**：npm 元数据缓存可能导致装到旧版，可强制指定版本
    `dsh plugin --profile web add dsh-mcp@latest`（或 `@1.8.0`）。
@@ -209,8 +235,8 @@ dsh plugin --profile web add link:<本仓库绝对路径>
 - 若升级过插件，请重启后**硬刷新**，避免旧 client bundle 与新版 host 不匹配
   （典型现象：操作报 `client api: ... 404` 或 `env is not iterable`，都是新旧版本混用所致）；
 - 报错形如 `transport failure for /api/mcpManager/list: HTTP 404` 表示宿主端没有注册
-  `mcpManager` 服务：多半是插件 host 半未生效（漏了 cordis.patch.yml 注册行/装错 profile）或
-  client 与 host 版本不一致。请按 Q1 核对注册行、确认安装到了 `web` profile、重启后硬刷新；
+  `mcpManager` 服务：多半是插件 host 半未生效（bundle 未被选入 `dsh.profile.bundles`，或装错
+  profile）或 client 与 host 版本不一致。请按 Q1 核对 bundles 与安装位置、重启后硬刷新；
   仍不行则把 `dsh web` 与插件版本都升到最新再试。
 
 **Q3：MCP 工具没有出现在 agent 会话里？**

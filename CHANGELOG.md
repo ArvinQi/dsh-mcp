@@ -9,8 +9,21 @@
 
 ## 兼容性
 
-- **支持版本**：**dsh `0.1.6-alpha.2`** —— 本插件在 `0.1.6-alpha.2` 上开发与验证（`package.json` → `dsh.supported` 同步声明）。DSH 与插件版本不匹配时，设置页会给出排查诊断（核对 `cordis.patch.yml` 注册行 → 重启 `dsh web` → 硬刷新 → 同步升级）。
+- **支持版本**：**dsh `0.1.6-alpha.2`** —— 本插件在 `0.1.6-alpha.2` 上开发与验证（`package.json` → `dsh.supported` 同步声明）。DSH 与插件版本不匹配时，设置页会给出排查诊断（核对 bundle 是否已选中 → 重启 `dsh web` → 硬刷新 → 同步升级）。
 - **发版约定**：每个版本条目都要声明 `- **支持版本**：dsh <版本>`，并在 GitHub Release notes 中同步。Release 正文用**中文**（与本文档一致），标题层级与条目一致。
+
+## [1.13.0] - 2026-10-08
+
+- **支持版本**：**dsh `0.1.6-alpha.2`**
+
+### 变更
+
+- **声明 `dsh.bundle`，插件现在能作为 bundle 安装/启用**：此前包内没有 `dsh.bundle`，DSH Web 的插件管理页在 `plugin-manager.inspect()` 的 `not-a-bundle` 分支直接拒掉安装——报错 `dsh-mcp declares no dsh.bundle`（registry 与本地路径两种来源都拒），`dsh plugin add` 也只把包当作普通依赖装进 profile，必须再手写 `- insert: [{ id: dsh-mcp, name: dsh-mcp }]` 注册行才生效。现在 `package.json` 声明 `dsh.bundle.patch` → 包根 `cordis.patch.yml`：安装时 DSH 自动把 `dsh-mcp` 写入 `dsh.profile.bundles`，并由该 patch insert 插件行；`cordis.patch.yml` 已加入 `files`，随 tarball 发布
+- **注册行移入包内，用户 patch 层只做配置覆盖**：`$DSH_HOME/profiles/<profile>/cordis.patch.yml`（用户层）与 `$DSH_HOME/cordis.patch.yml`（机器层）不再 insert 同一 id，改用 id-targeted 条目覆盖 `config`（`probeTimeoutMs` / `allowBrowserOnMount`）——同一 id 由两层声明会让 loader 组合失败。README 中英的安装、注册与排查章节据此重写，并说明「包内 bundle patch」与「声明式服务器用的 profile patch」是两个文件
+
+### 说明
+
+- 新增 `test/bundle-manifest.test.mjs`：断言清单声明 `dsh.bundle.patch`、被引用的 patch 文件存在且列入 `files`、patch 解析后恰好 insert 一行 `{ id: dsh-mcp, name: dsh-mcp }`（解析用 `js-yaml`；无 DSH 模块闭包的环境只跳过该子测试）
 
 ## [1.12.1] - 2026-10-07
 

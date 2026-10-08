@@ -1,6 +1,6 @@
 # Changelog
 
-**[简体中文](CHANGELOG.zh.md) | English**
+**[简体中文](CHANGELOG.md) | English**
 
 All notable changes to this project are documented in this file.
 
@@ -9,8 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Compatibility
 
-- **Supported DSH version**: **dsh `0.1.6-alpha.2`** — developed and verified on `0.1.6-alpha.2` (declared in `package.json` → `dsh.supported`). When the DSH and plugin versions do not match, the Settings page reports a diagnosis (check the `cordis.patch.yml` row → restart `dsh web` → hard-refresh → upgrade both sides).
+- **Supported DSH version**: **dsh `0.1.6-alpha.2`** — developed and verified on `0.1.6-alpha.2` (declared in `package.json` → `dsh.supported`). When the DSH and plugin versions do not match, the Settings page reports a diagnosis (check whether the bundle is selected → restart `dsh web` → hard-refresh → upgrade both sides).
 - **Release convention**: every version entry states `- **Supported DSH version**: dsh <version>`, mirrored in the GitHub Release notes. The release body is written in **Chinese** (matching [CHANGELOG.md](CHANGELOG.md)), with heading levels mirroring the entry.
+
+## [1.13.0] - 2026-10-08
+
+- **Supported DSH version**: **dsh `0.1.6-alpha.2`**
+
+### Changed
+
+- **The package declares `dsh.bundle`, so it now installs and enables as a bundle**: it declared none before, and the DSH Web plugin manager refused the install at the `not-a-bundle` branch of `plugin-manager.inspect()` — `dsh-mcp declares no dsh.bundle` (both registry and local-path sources are refused), while `dsh plugin add` merely installed the package as a plain profile dependency that still needed a hand-written `- insert: [{ id: dsh-mcp, name: dsh-mcp }]` row to take effect. `package.json` now declares `dsh.bundle.patch` → the package-root `cordis.patch.yml`: installing writes `dsh-mcp` into `dsh.profile.bundles` and that patch inserts the plugin row. `cordis.patch.yml` was added to `files` so it ships in the tarball
+- **The registration row moved into the package; the user patch layers only override config**: `$DSH_HOME/profiles/<profile>/cordis.patch.yml` (profile layer) and `$DSH_HOME/cordis.patch.yml` (machine layer) no longer insert the same id — they use an id-targeted entry to override `config` (`probeTimeoutMs` / `allowBrowserOnMount`), because one row id declared by two layers makes the loader fail to compose. Both READMEs' install, registration and troubleshooting sections were rewritten accordingly, and now state that the in-package bundle patch and the profile patch used for declared servers are two different files
+
+### Notes
+
+- Added `test/bundle-manifest.test.mjs`: it asserts the manifest declares `dsh.bundle.patch`, that the referenced patch exists and is listed in `files`, and that the patch parses to exactly one inserted row `{ id: dsh-mcp, name: dsh-mcp }` (`js-yaml` parses it; environments without the DSH module closure skip only that subtest)
 
 ## [1.12.1] - 2026-10-07
 

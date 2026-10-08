@@ -1,0 +1,15 @@
+# dsh-mcp bundle patch: the single row that provides the MCP manager.
+#
+# The row's package carries both halves, so one row is enough:
+#   - host:   McpManagerService (persisted server definitions, runtime mounts of
+#             @deepseek-ai/dsh-mcp-client, credential injection, connection probes)
+#   - client: the Settings → MCP page, mounted through this package's `dsh.client`
+#             declaration (scanned by client-modules while the row is active)
+#
+# The row keeps the Config schema defaults (probeTimeoutMs 15000,
+# allowBrowserOnMount true). A profile overrides them with an id-targeted entry
+# in its own cordis.patch.yml, applied after every bundle layer; do not insert a
+# second row with this id.
+- insert:
+    - id: dsh-mcp
+      name: dsh-mcp

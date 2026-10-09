@@ -336,7 +336,9 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
       setOauthWaiting(prev => new Set(prev).add(server.serverName))
     } catch (error) {
       tab?.close()
-      setActionError(String((error instanceof Error ? error.message : error) ?? error))
+      // A missing Host method (a client/host version mismatch before the next
+      // restart) is the one failure this path can hit; say what to do.
+      setActionError(`${tRef.current('oauthStartFailed')}: ${String((error instanceof Error ? error.message : error) ?? error)}`)
     } finally {
       setOauthStarting(prev => {
         const next = new Set(prev)
@@ -532,6 +534,12 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
             const oauthPending = oauthNeedsAuth && server.status.oauthRequired === true
             const oauthInFlight = oauthNeedsAuth
               && (oauthStarting.has(server.serverName) || oauthWaiting.has(server.serverName))
+            // The mount's "authorization required" error embeds the link (and
+            // only that error does); it is recognized across host versions so
+            // the row shows the button hint instead of the raw link text.
+            const oauthLinkError = oauthNeedsAuth
+              && typeof server.status.error === 'string'
+              && server.status.error.includes('response_type=code')
             const card = (
               <li key={server.id} className={css.card}>
                 <div className={css.row}>
@@ -571,7 +579,7 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
                         button" hint instead of the raw authorization-link
                         error the mount produced; every other failure keeps its
                         diagnostic text. */}
-                    {oauthInFlight || oauthPending ? (
+                    {oauthInFlight || oauthPending || oauthLinkError ? (
                       <p className={css.note}>{t('oauthRequiredHint')}</p>
                     ) : server.status.error ? <p className={css.warn}>{server.status.error}</p> : null}
                     {declared ? <p className={css.note}>{t('readOnlyHint')}</p> : null}

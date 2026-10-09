@@ -73,8 +73,10 @@ test("the built bundle carries the OAuth button, its 5s polling, and the new rem
 	// Non-ASCII copy is emitted as \uXXXX escapes by the bundler, so match the
 	// ASCII markers and the escape of "打开授权页面" (the button label).
 	for (const marker of [
-		"\\u6253\\u5F00\\u6388\\u6743\\u9875\\u9762",
-		"Open authorization page",
+		// 未授权 (the badge of an unauthorized OAuth server)
+		"\\u672A\\u6388\\u6743",
+		"Not authorized",
+		"Authorizing",
 		"oauthStart",
 		"oauthStatus",
 		"oauthRequired",

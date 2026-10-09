@@ -142,23 +142,6 @@ button:disabled {
   color: var(--dsw-alias-state-error-primary);
 }
 
-.oauthPanel {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px 12px;
-  border: 1px solid var(--dsw-alias-border-l2);
-  border-radius: 8px;
-  background: var(--dsw-alias-bg-layer-1);
-}
-
-.oauthRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-}
-
 .oauthWaiting {
   font-size: 12px;
   line-height: 18px;
@@ -176,11 +159,6 @@ button:disabled {
   font-size: 13px;
   line-height: 20px;
   color: var(--dsw-alias-state-warn-primary);
-}
-
-.oauthPanel a {
-  color: var(--dsw-alias-brand-primary);
-  word-break: break-all;
 }
 
 .actions {

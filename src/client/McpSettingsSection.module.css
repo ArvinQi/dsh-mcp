@@ -223,6 +223,22 @@ button:disabled {
   color: var(--dsw-alias-state-warn-primary);
 }
 
+.badge.oauthMiss {
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, transparent);
+  color: var(--dsw-alias-state-error-primary);
+}
+
+/* The authorization button of an unauthorized OAuth server: red, so the
+   missing authorization is visible without any warning text. */
+.dangerButton {
+  border-color: var(--dsw-alias-state-error-primary);
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.dangerButton:hover {
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, transparent);
+}
+
 .note {
   margin: 6px 0 0;
   color: var(--dsw-alias-label-secondary);

@@ -99,9 +99,12 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
   const [envOpen, setEnvOpen] = useState(true)
   const [adopting, setAdopting] = useState<ReadonlySet<string>>(new Set())
   const [oauthWaiting, setOauthWaiting] = useState<ReadonlySet<string>>(new Set())
+  const [oauthStarting, setOauthStarting] = useState<ReadonlySet<string>>(new Set())
   const [actionError, setActionError] = useState<string | null>(null)
   const [actionNotice, setActionNotice] = useState<string | null>(null)
   const timersRef = useRef<number[]>([])
+  /** Servers whose flow died (no listener, no tokens): stop polling them. */
+  const oauthStoppedRef = useRef<Set<string>>(new Set())
   // The injected face is re-created on every render; the poller reads it
   // through a ref so its interval is not restarted by unrelated renders.
   const oauthStatusRef = useRef(oauthStatus)
@@ -225,10 +228,15 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
    * only failed because the user still has to authorize, or an interactive
    * flow the mount opened (`allowBrowserOnMount`). They are polled too, so a
    * browser authorization completed while the page sat open is noticed within
-   * one poll interval instead of needing a manual refresh.
+   * one poll interval instead of needing a manual refresh. A server whose flow
+   * already died (no listener, no tokens) stops being polled until the user
+   * clicks its button again.
    */
   const hostPendingOAuth = state.servers
-    .filter(server => server.oauth === true && server.status.oauthRequired === true && server.oauthAuthorized !== true)
+    .filter(server => server.oauth === true
+      && server.status.oauthRequired === true
+      && server.oauthAuthorized !== true
+      && !oauthStoppedRef.current.has(server.serverName))
     .map(server => server.serverName)
   const pollKey = [...new Set([...oauthWaiting, ...hostPendingOAuth])].sort().join(',')
 
@@ -236,7 +244,7 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
    * Poll the authorization state of every pending flow every 5s. Nothing
    * renders as failed before the host reports tokens; a completed
    * authorization refreshes the list (the host remounts the server when the
-   * credentials update lands).
+   * credentials update lands), and a flow that is gone stops being polled.
    */
   useEffect(() => {
     if (pollKey.length === 0) return
@@ -255,12 +263,20 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
       const authorized = results
         .filter(entry => entry.status?.authorized === true)
         .map(entry => entry.name)
-      if (authorized.length === 0) return
+      // A flow with no listener left (callback expired, mount gave up) is not
+      // going to complete on its own: stop polling it until the next click.
+      const gone = results
+        .filter(entry => entry.status !== null && !entry.status.authorized && !entry.status.pending)
+        .map(entry => entry.name)
+      for (const name of gone) oauthStoppedRef.current.add(name)
+      const finished = new Set([...authorized, ...gone])
+      if (finished.size === 0) return
       setOauthWaiting((prev) => {
         const next = new Set(prev)
-        for (const name of authorized) next.delete(name)
+        for (const name of finished) next.delete(name)
         return next
       })
+      if (authorized.length === 0) return
       setActionError(null)
       setActionNotice(tRef.current('oauthAuthorized'))
       refreshServer('')
@@ -303,11 +319,15 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
   /**
    * Row-level authorization: start (or reuse) the stored server's flow, open
    * the URL in a new tab — reserved synchronously on the click so the popup is
-   * allowed — and let the 5s poller above detect completion.
+   * allowed — and let the 5s poller above detect completion. The button shows
+   * "authorizing…" from the click on; a start failure is the only failure this
+   * path reports.
    */
   const runOAuth = async (server: McpServerView): Promise<void> => {
     setActionError(null)
     setActionNotice(null)
+    oauthStoppedRef.current.delete(server.serverName)
+    setOauthStarting(prev => new Set(prev).add(server.serverName))
     const tab = window.open('', '_blank')
     try {
       const url = await oauthStart({ id: server.id, serverName: server.serverName })
@@ -317,6 +337,12 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
     } catch (error) {
       tab?.close()
       setActionError(String((error instanceof Error ? error.message : error) ?? error))
+    } finally {
+      setOauthStarting(prev => {
+        const next = new Set(prev)
+        next.delete(server.serverName)
+        return next
+      })
     }
   }
 
@@ -496,6 +522,16 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
             // Declared servers are mounted by the composition, so this page
             // only views them: no enable/disable, no refresh, no editor.
             const declared = server.source === 'cordis'
+            // OAuth state of a managed row: unauthorized rows carry the red
+            // button (and never the raw authorization-link error), a pending
+            // flow reads as "awaiting authorization", and once tokens are
+            // stored the button disappears.
+            const oauthManaged = !declared && server.oauth === true
+            const oauthAuthorized = server.oauthAuthorized === true
+            const oauthNeedsAuth = oauthManaged && !oauthAuthorized
+            const oauthPending = oauthNeedsAuth && server.status.oauthRequired === true
+            const oauthInFlight = oauthNeedsAuth
+              && (oauthStarting.has(server.serverName) || oauthWaiting.has(server.serverName))
             const card = (
               <li key={server.id} className={css.card}>
                 <div className={css.row}>
@@ -510,10 +546,12 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
                         <span className={`${css.badge} ${css.cordis}`}>{t('pendingBadge')}</span>
                       ) : server.conflict ? (
                         <span className={`${css.badge} ${css.cordis}`}>{t('conflictBadge')}</span>
-                      ) : server.status.oauthRequired === true ? (
-                        /* An OAuth server that has not been authorized yet: the
-                           pending state, not a pre-authorization failure. */
+                      ) : oauthPending ? (
+                        /* A flow is waiting for the user: the pending state,
+                           never a pre-authorization failure. */
                         <span className={`${css.badge} ${css.oauth}`}>{t('oauthBadgeWaiting')}</span>
+                      ) : oauthNeedsAuth ? (
+                        <span className={`${css.badge} ${css.oauthMiss}`}>{t('oauthBadgeUnauthorized')}</span>
                       ) : (
                         <span className={`${css.badge} ${css[server.status.phase]}`}>{t(phaseKey(server.status.phase))}</span>
                       )}
@@ -529,7 +567,11 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
                     ) : null}
                     {server.conflict ? <p className={css.warn}>{t('conflictDeclared')}</p> : null}
                     {server.needsPlugin ? <p className={css.warn}>{t('needsPluginHint')}</p> : null}
-                    {server.status.oauthRequired === true ? (
+                    {/* An unauthorized OAuth server gets the short "click the
+                        button" hint instead of the raw authorization-link
+                        error the mount produced; every other failure keeps its
+                        diagnostic text. */}
+                    {oauthInFlight || oauthPending ? (
                       <p className={css.note}>{t('oauthRequiredHint')}</p>
                     ) : server.status.error ? <p className={css.warn}>{server.status.error}</p> : null}
                     {declared ? <p className={css.note}>{t('readOnlyHint')}</p> : null}
@@ -544,11 +586,12 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
                         {server.enabled ? t('disable') : t('enabled')}
                       </button>
                     )}
-                    {/* OAuth servers get the button that opens the authorization
-                        page; the status is polled every 5s until tokens land. */}
-                    {!declared && !server.conflict && !server.pendingTakeover && server.oauth === true && server.oauthAuthorized !== true ? (
-                      <button type="button" onClick={() => void runOAuth(server)}>
-                        {oauthWaiting.has(server.serverName) ? t('oauthChecking') : t('oauthAuthorize')}
+                    {/* Unauthorized OAuth servers get the red authorization
+                        button; it reads "authorizing…" from the click on and
+                        the 5s poll hides it once tokens land. */}
+                    {oauthNeedsAuth && !server.conflict && !server.pendingTakeover ? (
+                      <button type="button" className={css.dangerButton} onClick={() => void runOAuth(server)}>
+                        {oauthInFlight ? t('oauthInProgress') : t('oauthAuthorize')}
                       </button>
                     ) : null}
                     {declared ? null : (

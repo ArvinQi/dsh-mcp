@@ -18,9 +18,9 @@ export interface McpServerFormRemote {
   remove: (id: McpServerId) => Promise<McpManagerFailure | null>
   test: (draft: McpDraft) => Promise<McpTestOutcome>
   list: () => Promise<readonly McpServerView[]>
-  /** Start (or reuse) an OAuth flow; resolves with the authorization URL. */
+  /** Start (or reuse) an OAuth flow; the list row's button drives it. */
   oauthStart: (request: McpOAuthStartRequest) => Promise<string>
-  /** Poll one server's authorization state (never called before the user starts a flow). */
+  /** Poll one server's authorization state (the editor uses this for its status line). */
   oauthStatus: (serverName: string) => Promise<McpOAuthStatus>
 }
 
@@ -51,10 +51,12 @@ export interface McpServerFormProps {
 export function McpServerForm(props: McpServerFormProps): ReactNode {
   const { draft, busy, testRunning, test, t, actions, injected, onSaved } = props
   const [saveError, setSaveError] = useState<string | null>(null)
-  /** Authorization flow state of the current draft. */
-  const [oauthPhase, setOauthPhase] = useState<'idle' | 'starting' | 'waiting' | 'authorized'>('idle')
-  const [oauthUrl, setOauthUrl] = useState<string | null>(null)
-  const [oauthError, setOauthError] = useState<string | null>(null)
+  /**
+   * Authorization state of the current draft. The editor has no button of its
+   * own — the list row's "OAuth 授权" button starts the flow — it only reports
+   * "authorizing…" and "authorization complete" while polling `oauthStatus`.
+   */
+  const [oauthPhase, setOauthPhase] = useState<'idle' | 'waiting' | 'authorized'>('idle')
   // The section re-creates the injected object on every render; keep the latest
   // one in a ref so the 5s poller below is not restarted by unrelated renders.
   const injectedRef = useRef(injected)
@@ -69,8 +71,6 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
   // draft) starts from a clean state.
   useEffect(() => {
     setOauthPhase('idle')
-    setOauthUrl(null)
-    setOauthError(null)
   }, [draft.id, draft.serverName])
 
   // Poll the authorization status every 5s while a flow is pending — never
@@ -83,7 +83,10 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
     const tick = async (): Promise<void> => {
       try {
         const status = await injectedRef.current.oauthStatus(serverName)
-        if (!cancelled && status.authorized) setOauthPhase('authorized')
+        if (cancelled) return
+        if (status.authorized) setOauthPhase('authorized')
+        // No listener and no tokens: the flow is gone, stop promising to wait.
+        else if (!status.pending) setOauthPhase('idle')
       } catch (error) {
         console.error('[dsh-mcp] oauthStatus failed:', error)
       }
@@ -98,35 +101,6 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
 
   const errorText = (error: unknown): string =>
     error instanceof Error ? error.message : String(error)
-
-  /**
-   * Open the authorization page for this draft: the host starts (or reuses)
-   * the loopback flow, this button opens the returned URL in a new tab, and
-   * the effect above polls the status until the tokens land.
-   */
-  const startOAuth = async (): Promise<void> => {
-    setOauthError(null)
-    setOauthPhase('starting')
-    // Reserve the tab synchronously: the click is the user gesture, whereas
-    // window.open after the Remote round trip may be popup-blocked.
-    const tab = window.open('', '_blank')
-    try {
-      const url = await injected.oauthStart({
-        ...draft.id === null ? {} : { id: draft.id },
-        serverName: draft.serverName.trim(),
-        url: draft.url.trim(),
-      })
-      setOauthUrl(url)
-      if (tab !== null) tab.location.href = url
-      else window.open(url, '_blank', 'noopener')
-      setOauthPhase('waiting')
-    } catch (error) {
-      tab?.close()
-      console.error('[dsh-mcp] oauthStart failed:', error)
-      setOauthError(`${t('oauthStartFailed')}: ${errorText(error)}`)
-      setOauthPhase('idle')
-    }
-  }
 
   const runTest = async (): Promise<void> => {
     setSaveError(null)
@@ -317,27 +291,10 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
       </label>
       <p className={css.hint}>{t('oauthAuthHint')}</p>
 
-      {draft.oauth && !stdio ? (
-        <div className={css.oauthPanel}>
-          <div className={css.oauthRow}>
-            <button type="button" disabled={oauthPhase === 'starting'} onClick={() => void startOAuth()}>
-              {t('oauthOpen')}
-            </button>
-            {oauthPhase === 'waiting' ? (
-              <span className={css.oauthWaiting} role="status">{t('oauthWaiting')}</span>
-            ) : null}
-            {oauthPhase === 'authorized' ? (
-              <span className={css.oauthOk} role="status">{t('oauthAuthorized')}</span>
-            ) : null}
-          </div>
-          {oauthUrl !== null ? (
-            <p className={css.muted}>
-              {t('oauthLinkFallback')}{' '}
-              <a href={oauthUrl} target="_blank" rel="noreferrer">{oauthUrl}</a>
-            </p>
-          ) : null}
-          {oauthError !== null ? <p className={css.error} role="alert">{oauthError}</p> : null}
-        </div>
+      {draft.oauth && !stdio && oauthPhase !== 'idle' ? (
+        <p className={oauthPhase === 'authorized' ? css.oauthOk : css.oauthWaiting} role="status">
+          {oauthPhase === 'authorized' ? t('oauthAuthorized') : t('oauthWaiting')}
+        </p>
       ) : null}
 
       <label className={css.checkRow}>

@@ -130,10 +130,15 @@ async function bootManager() {
 	root.baseUrl = pathToFileURL(join(profileDir, "cordis.yml")).href;
 	await root.plugin(McpManagerService, { probeTimeoutMs: 2e3, allowBrowserOnMount: false });
 	const service = root.get("mcpManager");
+	// The Host opens the authorization page itself; the suite records the URLs
+	// instead of spawning a real browser.
+	const opened = [];
+	service.openAuthorizationPage = (url) => { opened.push(url); };
 	await service.list();
 	return {
 		service,
 		secrets,
+		opened,
 		cleanup: async () => {
 			await service.teardownAll();
 			await root.fiber.dispose();
@@ -216,6 +221,7 @@ test("oauthStart returns the authorization URL and oauthStatus polls pending →
 		// The button may be clicked twice: the same pending flow is reused.
 		const again = await context.service.oauthStart({ serverName: "oauthsrv", url: `${oauth.base}/mcp` });
 		assert.equal(again.url, started.url);
+		assert.deepEqual(context.opened, [started.url, started.url], "the Host opened the authorization page itself");
 
 		const pending = await context.service.oauthStatus({ serverName: "oauthsrv" });
 		assert.deepEqual(
@@ -235,8 +241,45 @@ test("oauthStart returns the authorization URL and oauthStatus polls pending →
 	}
 });
 
-test("test connection on an OAuth server reports pending authorization, never a failure", async () => {
+test("a rejected authorization reports its reason instead of going quiet", async () => {
 	const oauth = await startFakeOAuthServer();
+	const context = await bootManager();
+	try {
+		const started = await context.service.oauthStart({ serverName: "deniedsrv", url: `${oauth.base}/mcp` });
+		assert.equal(started.ok, true, started.ok ? "" : started.error.message);
+		assert.deepEqual(context.opened, [started.url]);
+		const redirect = new URL(new URL(started.url).searchParams.get("redirect_uri"));
+		// The user pressed "deny" (or the authorization server rejected the request).
+		const page = await fetch(`${redirect.origin}${redirect.pathname}?error=access_denied&error_description=nope`);
+		assert.equal(page.status, 200);
+
+		let status = await context.service.oauthStatus({ serverName: "deniedsrv" });
+		for (let i = 0; i < 40 && status.pending; i += 1) {
+			await delay(25);
+			status = await context.service.oauthStatus({ serverName: "deniedsrv" });
+		}
+		assert.deepEqual(
+			{ authorized: status.authorized, pending: status.pending, error: status.error },
+			{ authorized: false, pending: false, error: "access_denied" },
+			"the failure reason reaches the settings page",
+		);
+
+		// A fresh attempt starts clean: no stale failure while the new flow runs.
+		const retried = await context.service.oauthStart({ serverName: "deniedsrv", url: `${oauth.base}/mcp` });
+		assert.equal(retried.ok, true, retried.ok ? "" : retried.error.message);
+		const running = await context.service.oauthStatus({ serverName: "deniedsrv" });
+		assert.equal(running.error, undefined, "the previous failure is cleared on retry");
+		assert.equal(running.pending, true);
+		// Complete the retry so its listener does not outlive the test.
+		await completeAuthorization(running.url, "retry-code");
+		await waitForAuthorized(context.service, "deniedsrv");
+	} finally {
+		await context.cleanup();
+		await oauth.close();
+	}
+});
+
+test("test connection on an OAuth server reports pending authorization, never a failure", async () => {	const oauth = await startFakeOAuthServer();
 	const context = await bootManager();
 	try {
 		const result = await context.service.test({ server: oauthRow("probesrv", oauth.base), env: [] });

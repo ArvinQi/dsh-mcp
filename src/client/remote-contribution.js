@@ -431,6 +431,7 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_oauthStatus_result$schema = z.unio
   'pending': z.boolean().readonly(),
   'url': z.string().readonly().optional(),
   'expiresAt': z.number().readonly().optional(),
+  'error': z.string().readonly().optional(),
 }), z.object({
   'ok': z.literal(false).readonly(),
   'error': z.object({

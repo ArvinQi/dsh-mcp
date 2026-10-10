@@ -63,6 +63,7 @@ interface McpManagerRemote {
     readonly pending: boolean
     readonly url?: string
     readonly expiresAt?: number
+    readonly error?: string
   }>>
 }
 
@@ -216,6 +217,7 @@ export async function apply(ctx: Context): Promise<void> {
         pending: result.pending,
         ...result.url === undefined ? {} : { url: result.url },
         ...result.expiresAt === undefined ? {} : { expiresAt: result.expiresAt },
+        ...result.error === undefined ? {} : { error: result.error },
       }
     },
   })

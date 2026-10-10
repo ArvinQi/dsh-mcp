@@ -100,6 +100,9 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
   const [adopting, setAdopting] = useState<ReadonlySet<string>>(new Set())
   const [oauthWaiting, setOauthWaiting] = useState<ReadonlySet<string>>(new Set())
   const [oauthStarting, setOauthStarting] = useState<ReadonlySet<string>>(new Set())
+  const [oauthLinks, setOauthLinks] = useState<ReadonlyMap<string, string>>(() => new Map())
+  const [oauthErrors, setOauthErrors] = useState<ReadonlyMap<string, string>>(() => new Map())
+  const [oauthIncomplete, setOauthIncomplete] = useState<ReadonlySet<string>>(new Set())
   const [actionError, setActionError] = useState<string | null>(null)
   const [actionNotice, setActionNotice] = useState<string | null>(null)
   const timersRef = useRef<number[]>([])
@@ -263,13 +266,28 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
       const authorized = results
         .filter(entry => entry.status?.authorized === true)
         .map(entry => entry.name)
-      // A flow with no listener left (callback expired, mount gave up) is not
-      // going to complete on its own: stop polling it until the next click.
+      // A flow that reported a failure (`access_denied`, token exchange, ...)
+      // or that lost its listener is not going to complete on its own: stop
+      // polling it, remember the outcome, and let the user retry.
+      const failed = results
+        .filter(entry => entry.status !== null && !entry.status.authorized && entry.status.error !== undefined)
+        .map(entry => ({ name: entry.name, error: entry.status?.error ?? '' }))
       const gone = results
-        .filter(entry => entry.status !== null && !entry.status.authorized && !entry.status.pending)
+        .filter(entry => entry.status !== null && !entry.status.authorized && entry.status.error === undefined && !entry.status.pending)
         .map(entry => entry.name)
-      for (const name of gone) oauthStoppedRef.current.add(name)
-      const finished = new Set([...authorized, ...gone])
+      for (const entry of failed) {
+        oauthStoppedRef.current.add(entry.name)
+        setOauthErrors(prev => new Map(prev).set(entry.name, entry.error))
+      }
+      for (const name of gone) {
+        oauthStoppedRef.current.add(name)
+        setOauthIncomplete(prev => new Set(prev).add(name))
+      }
+      const finished = new Set([
+        ...authorized,
+        ...failed.map(entry => entry.name),
+        ...gone,
+      ])
       if (finished.size === 0) return
       setOauthWaiting((prev) => {
         const next = new Set(prev)
@@ -277,6 +295,16 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
         return next
       })
       if (authorized.length === 0) return
+      setOauthErrors((prev) => {
+        const next = new Map(prev)
+        for (const name of authorized) next.delete(name)
+        return next
+      })
+      setOauthIncomplete((prev) => {
+        const next = new Set(prev)
+        for (const name of authorized) next.delete(name)
+        return next
+      })
       setActionError(null)
       setActionNotice(tRef.current('oauthAuthorized'))
       refreshServer('')
@@ -317,25 +345,32 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
   }
 
   /**
-   * Row-level authorization: start (or reuse) the stored server's flow, open
-   * the URL in a new tab — reserved synchronously on the click so the popup is
-   * allowed — and let the 5s poller above detect completion. The button shows
-   * "authorizing…" from the click on; a start failure is the only failure this
-   * path reports.
+   * Row-level authorization: ask the Host to start (or reuse) the server's
+   * flow. The Host opens the system browser itself — a client-side
+   * `window.open` is denied inside the DSH shell and only flashes a blank tab
+   * — and the row keeps the URL as a manual fallback link. The 5s poller above
+   * then reports "authorizing…", the failure reason, or success.
    */
   const runOAuth = async (server: McpServerView): Promise<void> => {
     setActionError(null)
     setActionNotice(null)
     oauthStoppedRef.current.delete(server.serverName)
+    setOauthErrors(prev => {
+      const next = new Map(prev)
+      next.delete(server.serverName)
+      return next
+    })
+    setOauthIncomplete(prev => {
+      const next = new Set(prev)
+      next.delete(server.serverName)
+      return next
+    })
     setOauthStarting(prev => new Set(prev).add(server.serverName))
-    const tab = window.open('', '_blank')
     try {
       const url = await oauthStart({ id: server.id, serverName: server.serverName })
-      if (tab !== null) tab.location.href = url
-      else window.open(url, '_blank', 'noopener')
+      setOauthLinks(prev => new Map(prev).set(server.serverName, url))
       setOauthWaiting(prev => new Set(prev).add(server.serverName))
     } catch (error) {
-      tab?.close()
       // A missing Host method (a client/host version mismatch before the next
       // restart) is the one failure this path can hit; say what to do.
       setActionError(`${tRef.current('oauthStartFailed')}: ${String((error instanceof Error ? error.message : error) ?? error)}`)
@@ -540,6 +575,10 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
             const oauthLinkError = oauthNeedsAuth
               && typeof server.status.error === 'string'
               && server.status.error.includes('response_type=code')
+            /** Manual fallback for the authorization page (the Host opens the browser itself). */
+            const oauthLink = oauthLinks.get(server.serverName)
+            const oauthError = oauthErrors.get(server.serverName)
+            const oauthIncompleteHere = oauthIncomplete.has(server.serverName)
             const card = (
               <li key={server.id} className={css.card}>
                 <div className={css.row}>
@@ -575,11 +614,26 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
                     ) : null}
                     {server.conflict ? <p className={css.warn}>{t('conflictDeclared')}</p> : null}
                     {server.needsPlugin ? <p className={css.warn}>{t('needsPluginHint')}</p> : null}
-                    {/* An unauthorized OAuth server gets the short "click the
-                        button" hint instead of the raw authorization-link
-                        error the mount produced; every other failure keeps its
-                        diagnostic text. */}
-                    {oauthInFlight || oauthPending || oauthLinkError ? (
+                    {/* The authorization outcome, always visible: authorizing
+                        (with a manual link), the failure reason reported by the
+                        authorization server, "did not complete", or the short
+                        "click the button" hint. Only non-authorization failures
+                        keep the raw mount error. */}
+                    {oauthInFlight || (oauthPending && oauthLink !== undefined) ? (
+                      <p className={css.note}>
+                        {t('oauthInProgress')}
+                        {oauthLink !== undefined ? (
+                          <>
+                            {' · '}
+                            <a href={oauthLink} target="_blank" rel="noreferrer">{t('oauthOpenManual')}</a>
+                          </>
+                        ) : null}
+                      </p>
+                    ) : oauthError !== undefined ? (
+                      <p className={css.warn}>{t('oauthFailed')}: {oauthError}</p>
+                    ) : oauthIncompleteHere ? (
+                      <p className={css.note}>{t('oauthNotCompleted')}</p>
+                    ) : oauthPending || oauthLinkError ? (
                       <p className={css.note}>{t('oauthRequiredHint')}</p>
                     ) : server.status.error ? <p className={css.warn}>{server.status.error}</p> : null}
                     {declared ? <p className={css.note}>{t('readOnlyHint')}</p> : null}

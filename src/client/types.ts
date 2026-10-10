@@ -156,6 +156,12 @@ export interface McpOAuthStatus {
   readonly url?: string
   /** Access-token expiry (epoch ms) when the token carries one. */
   readonly expiresAt?: number
+  /**
+   * Why the last flow failed (e.g. `access_denied` from the authorization
+   * server, or a token-exchange error). Absent while a flow runs and after a
+   * successful authorization.
+   */
+  readonly error?: string
 }
 
 /**

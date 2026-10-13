@@ -566,6 +566,11 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
             const oauthManaged = !declared && server.oauth === true
             const oauthAuthorized = server.oauthAuthorized === true
             const oauthNeedsAuth = oauthManaged && !oauthAuthorized
+            // A server that is live and serving tools does not need the red
+            // "not authorized" alarm even without OAuth tokens (its static
+            // headers may be enough): keep a plain button, drop the alarm.
+            const oauthUsable = server.status.phase === 'live' && server.status.tools.length > 0
+            const oauthBlocks = oauthNeedsAuth && !oauthUsable
             const oauthPending = oauthNeedsAuth && server.status.oauthRequired === true
             const oauthInFlight = oauthNeedsAuth
               && (oauthStarting.has(server.serverName) || oauthWaiting.has(server.serverName))
@@ -597,7 +602,7 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
                         /* A flow is waiting for the user: the pending state,
                            never a pre-authorization failure. */
                         <span className={`${css.badge} ${css.oauth}`}>{t('oauthBadgeWaiting')}</span>
-                      ) : oauthNeedsAuth ? (
+                      ) : oauthBlocks ? (
                         <span className={`${css.badge} ${css.oauthMiss}`}>{t('oauthBadgeUnauthorized')}</span>
                       ) : (
                         <span className={`${css.badge} ${css[server.status.phase]}`}>{t(phaseKey(server.status.phase))}</span>
@@ -633,7 +638,9 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
                       <p className={css.warn}>{t('oauthFailed')}: {oauthError}</p>
                     ) : oauthIncompleteHere ? (
                       <p className={css.note}>{t('oauthNotCompleted')}</p>
-                    ) : oauthPending || oauthLinkError ? (
+                    ) : oauthPending || oauthBlocks ? (
+                      <p className={css.note}>{t('oauthRequiredHint')}</p>
+                    ) : oauthLinkError && !oauthUsable ? (
                       <p className={css.note}>{t('oauthRequiredHint')}</p>
                     ) : server.status.error ? <p className={css.warn}>{server.status.error}</p> : null}
                     {declared ? <p className={css.note}>{t('readOnlyHint')}</p> : null}
@@ -648,11 +655,17 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
                         {server.enabled ? t('disable') : t('enabled')}
                       </button>
                     )}
-                    {/* Unauthorized OAuth servers get the red authorization
-                        button; it reads "authorizing…" from the click on and
-                        the 5s poll hides it once tokens land. */}
+                    {/* Unauthorized OAuth servers keep the button; it is red
+                        only when the missing authorization actually blocks the
+                        server (not live with tools). It reads "authorizing…"
+                        from the click on and the 5s poll hides it once tokens
+                        land. */}
                     {oauthNeedsAuth && !server.conflict && !server.pendingTakeover ? (
-                      <button type="button" className={css.dangerButton} onClick={() => void runOAuth(server)}>
+                      <button
+                        type="button"
+                        className={oauthBlocks ? css.dangerButton : undefined}
+                        onClick={() => void runOAuth(server)}
+                      >
                         {oauthInFlight ? t('oauthInProgress') : t('oauthAuthorize')}
                       </button>
                     ) : null}

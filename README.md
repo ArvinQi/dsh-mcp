@@ -25,7 +25,7 @@
 - **图片结果透传**：MCP 工具返回的图片（截图/图表等）经附件服务投影为图片引用进入模型上下文，带严格预检与有界降级文案（PR #4）
 - **双注入模式**：`search`（按需检索，省 token）与 `full`（全量注入）
 - **零 npm 依赖**：直接对接 DeepSeek Harness 内部能力，安装即用
-- **OAuth 认证支持**：`streamable-http` 服务器若走 MCP OAuth（授权码 + PKCE），设置页点「OAuth 授权 / 打开授权页面」按钮在浏览器完成授权，本页每 5 秒轮询授权状态；token 与 client 信息持久化、由 SDK 自动刷新（24 小时内活跃自动续期），失效后重新授权。**授权完成前只显示「等待授权」，不报授权失败**
+- **OAuth 认证支持**：`streamable-http` 服务器若走 MCP OAuth（授权码 + PKCE），服务器卡片点「OAuth 授权」按钮，**由宿主打开系统浏览器**完成授权，本页每 5 秒轮询授权状态；token 与 client 信息持久化、由 SDK 自动刷新（24 小时内活跃自动续期），失效后重新授权。**授权完成前只显示「授权中」，授权失败会写明原因**
 - **HTTPS 默认按系统证书校验**：内网/公司 CA（只装在系统钥匙串里的根证书）无需再给 `dsh web` 加 `NODE_OPTIONS=--use-system-ca`，插件启动时把系统信任库并入 Node 默认根证书库
 - **三种安装方式**：npm / GitHub git 源 / 本地 link；中英文界面与文档
 
@@ -36,8 +36,9 @@
   连接探测（test）。
 - **Web 设置管理页**（client）：Settings → MCP，列表/编辑/删除/测试服务器。
 - **OAuth 认证**（host，`lib/oauth.js`）：`streamable-http` 服务器遇 401 + OAuth 挑战时走
-  授权码 + PKCE 流程，回环回调收码、token 持久化并按需自动刷新；设置页提供「打开授权页面」
-  按钮（Remote `oauthStart`）与每 5 秒一次的 `oauthStatus` 轮询，测试连接与挂载共用同一份 token。
+  授权码 + PKCE 流程，回环回调收码、token 持久化并按需自动刷新；设置页提供「OAuth 授权」按钮
+  （Remote `oauthStart`，浏览器由宿主用系统浏览器打开）与每 5 秒一次的 `oauthStatus` 轮询
+  （返回 `pending` / `authorized` / 失败原因），测试连接与挂载共用同一份 token。
 - **系统证书校验**（host，`lib/system-ca.js`）：启动时把操作系统信任库的根证书并入 Node 默认库，
   HTTPS 连接与 OAuth 发现/注册/token 交换因此按系统证书校验（Node < 24.9 时退回 undici Agent 定向 fetch）。
 - **Remote 自挂载**：client 半部在 `apply()` 里自行 `ctx.remote.$mount()` 挂载 `mcpManager`
@@ -286,11 +287,16 @@ dsh plugin --profile web add link:<本仓库绝对路径>
 
 **OAuth 服务器**（`streamable-http` 走 MCP OAuth，如受 OAuth 保护的网关服务）：
 
-- 正常填写 URL 并勾选「使用 OAuth 授权」；保存后面板会出现 **「OAuth 授权」按钮**（编辑页文案为
-  「打开授权页面」），点击后在新标签页完成登录/同意
-- 点完按钮页面进入「等待授权…」，**每 5 秒自动检查一次授权状态**；授权成功前不会显示授权失败
+- 正常填写 URL 并勾选「使用 OAuth 授权」；授权缺失时服务器卡片会出现 **「OAuth 授权」按钮**
+  （编辑页不再有自己的按钮，只保留勾选、一行说明与「授权中／授权成功」状态）
+- 点击按钮**由宿主打开系统浏览器**（客户端 `window.open` 在 DSH 外壳里会被拒绝、只闪一下），
+  行上显示「授权中…」并**每 5 秒检查一次授权状态**；浏览器没起来时可以点行内的手动链接
+- 授权成功后按钮消失、工具出现；失败会写明原因（如「授权失败: access_denied」），
+  回调消失则显示「授权未完成（可重试）」——授权完成前不会报失败
 - token 与 OAuth client 信息持久化在凭据文档（按 `serverName` 隔离），由 MCP SDK 自动刷新
   （24 小时内活跃自动续期）；失效后重新授权，授权一次后挂载与测试复用
+- 已经 `live` 且有工具的服务器（静态 token 够用）不会被打上红色「未授权」，只保留一个普通授权按钮；
+  红色徽标/红色按钮只用于授权确实卡住挂载的服务器
 - 第一次挂载（`allowBrowserOnMount`，默认开）仍可能自动弹一次浏览器；把 profile 的
   `allowBrowserOnMount` 设为 `false` 即可完全改为「按钮驱动」。非 OAuth 服务器不受影响，连接失败即时返回
 

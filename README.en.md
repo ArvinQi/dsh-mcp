@@ -23,7 +23,7 @@
 - **Image result passthrough**: images returned by MCP tools (screenshots/charts) are projected through the attachment service into model image context, with strict preflight and bounded fallbacks (PR #4)
 - **Two injection modes**: `search` (on-demand, token-saving) and `full` (inject everything)
 - **Zero npm dependencies**: plugs into DeepSeek Harness internals, install and go
-- **OAuth authentication**: for `streamable-http` servers using MCP OAuth (authorization-code + PKCE), the settings page has an **Authorize / Open authorization page** button that opens the browser, then polls the authorization status every 5 seconds; tokens and OAuth client info are persisted and refreshed automatically by the SDK (auto-renewed while active within 24h), with re-authorization after expiry. **Nothing is reported as failed before you authorize — only "awaiting authorization"**
+- **OAuth authentication**: for `streamable-http` servers using MCP OAuth (authorization-code + PKCE), the server card has an **Authorize** button and the **Host opens the system browser** for the login; the page then polls the authorization status every 5 seconds. Tokens and OAuth client info are persisted and refreshed automatically by the SDK (auto-renewed while active within 24h), with re-authorization after expiry. **Before you authorize it only says "authorizing"; a real failure reports its reason**
 - **HTTPS verified against the system trust store by default**: intranet/corporate CAs (roots installed in the OS keychain) no longer need `NODE_OPTIONS=--use-system-ca` on `dsh web`; the plugin merges the OS store into Node's default root store at startup
 - **Three install paths**: npm / GitHub git source / local link; bilingual UI and docs
 
@@ -49,8 +49,9 @@ Migrated and merged from uncommitted MCP work in the `deepseek-harness` reposito
   - Expandable per-server tool list, all checked by default; unchecking a tool keeps it out of injection. Changes take effect immediately.
 - **OAuth authentication** (host, `lib/oauth.js`): on a 401 + OAuth challenge from a `streamable-http`
   server, runs the authorization-code + PKCE flow — receives the callback on a loopback server,
-  persists tokens, and refreshes them on demand; the settings page offers an "open authorization page"
-  button (Remote `oauthStart`) and a 5s `oauthStatus` poll, and test connections share the mount's token.
+  persists tokens, and refreshes them on demand; the settings page offers an "Authorize" button
+  (Remote `oauthStart`, the Host opens the system browser) and a 5s `oauthStatus` poll returning
+  `pending` / `authorized` / the failure reason. Test connections share the mount's token.
 - **System certificate verification** (host, `lib/system-ca.js`): at startup the OS trust store's roots
   are merged into Node's default store, so HTTPS connections and OAuth discovery/registration/token
   exchange verify against the system store (on Node < 24.9 it falls back to a scoped undici-Agent fetch).
@@ -300,14 +301,21 @@ Check in order:
 
 **OAuth servers** (`streamable-http` using MCP OAuth, e.g. OAuth-protected gateway services):
 
-- Fill in the URL and tick "Use OAuth authorization"; after saving, the card shows an **Authorize**
-  button ("Open authorization page" in the editor) that opens the login/consent page in a new tab.
-- The page then shows "waiting for authorization" and **checks the status every 5 seconds**; a failure is
-  never reported before you authorize.
+- Fill in the URL and tick "Use OAuth authorization"; when authorization is missing the card shows an
+  **Authorize** button (the editor has no button of its own — just the switch, a one-line hint and an
+  "authorizing / authorization complete" status).
+- Clicking it makes the **Host open the system browser** (a client-side `window.open` is denied inside the
+  DSH shell and only flashes), the row shows "authorizing…" and **checks the status every 5 seconds**; a
+  manual link in the row covers the case where the browser did not come up.
+- On success the button disappears and the tools appear; a failure reports its reason (e.g.
+  "authorization failed: access_denied"), and an expired callback says "authorization did not complete
+  (retry)". Nothing is reported as failed before you authorize.
 - Tokens and the registered OAuth client are persisted in the credentials document (scoped by `serverName`)
   and refreshed automatically by the MCP SDK (auto-renewed while active within 24h); after authorizing once,
   mounts and later test connections reuse the same token, and an expired token triggers a fresh
   authorization automatically.
+- A server that is already live and serving tools (its static token is enough) is not flagged red; the red
+  badge/button is reserved for servers the missing authorization actually blocks.
 - The first mount (`allowBrowserOnMount`, on by default) may still open the browser once; set
   `allowBrowserOnMount: false` in the profile patch to make authorization fully button-driven. Non-OAuth
   servers are unaffected and fail fast.

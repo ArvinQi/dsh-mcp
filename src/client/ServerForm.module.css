@@ -26,41 +26,9 @@
   gap: 8px;
 }
 
-button {
-  border: 1px solid var(--dsw-alias-border-l2);
-  border-radius: 6px;
-  padding: 5px 12px;
-  background: transparent;
-  color: var(--dsw-alias-label-primary);
-  font: inherit;
-  font-size: 13px;
-  line-height: 20px;
-  cursor: pointer;
-}
-
-button:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
-}
-
-button:focus-visible {
-  outline: 2px solid var(--dsw-alias-brand-primary);
-  outline-offset: 1px;
-}
-
-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-.primary {
-  border-color: var(--dsw-alias-button-primary-fill);
-  background: var(--dsw-alias-button-primary-fill);
-  color: var(--dsw-alias-label-primary-foreground);
-}
-
-.primary:hover {
-  background: var(--dsw-alias-button-primary-hover);
-}
+/* Control styling lives in class form in ./controls.module.css; this module
+   only keeps its own layout and modifiers, and it must never match an element
+   by tag (the sheets are injected into the host page globally, issue #14). */
 
 .danger {
   color: var(--dsw-alias-state-error-primary);
@@ -80,34 +48,6 @@ button:disabled {
   font-size: 13px;
   line-height: 20px;
   color: var(--dsw-alias-label-secondary);
-}
-
-.field input,
-.field select,
-.field textarea {
-  width: 100%;
-  box-sizing: border-box;
-  border: 1px solid var(--dsw-alias-border-l2);
-  border-radius: 8px;
-  padding: 6px 10px;
-  outline: none;
-  background: var(--dsw-alias-bg-layer-1);
-  color: var(--dsw-alias-label-primary);
-  font: inherit;
-  font-size: 13px;
-  resize: vertical;
-}
-
-.field input::placeholder,
-.field textarea::placeholder {
-  color: var(--dsw-alias-label-tertiary);
-}
-
-.field input:focus-visible,
-.field select:focus-visible,
-.field textarea:focus-visible {
-  border-color: var(--dsw-alias-brand-primary);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--dsw-alias-brand-primary) 18%, transparent);
 }
 
 .hint,

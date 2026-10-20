@@ -26,6 +26,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { McpServerView } from './types.ts'
 import type { McpSettingsLocaleKey } from './locales.ts'
+import controls from './controls.module.css'
 import css from './ServersJsonEditor.module.css'
 
 /** One { server, env } entry submitted to the Host's upsertJson. */
@@ -239,8 +240,8 @@ export function ServersJsonEditor({ injected, t, onApplied }: ServersJsonEditorP
       {error !== null ? <p className={css.error} role="alert">{error}</p> : null}
       {notice !== null ? <p className={css.notice} role="status">{notice}</p> : null}
       <div className={css.actions}>
-        <button type="button" disabled={busy} onClick={reseed}>{t('serversJsonReseed')}</button>
-        <button type="button" className={css.primary} disabled={busy} onClick={apply}>
+        <button type="button" className={controls.button} disabled={busy} onClick={reseed}>{t('serversJsonReseed')}</button>
+        <button type="button" className={`${controls.button} ${controls.primary}`} disabled={busy} onClick={apply}>
           {busy ? t('serversJsonSaving') : t('serversJsonApply')}
         </button>
       </div>

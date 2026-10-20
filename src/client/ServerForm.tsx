@@ -7,6 +7,7 @@ import type {
 } from './mcp-store.ts'
 import { parseArgs } from './mcp-store.ts'
 import type { McpSettingsLocaleKey } from './locales.ts'
+import controls from './controls.module.css'
 import css from './ServerForm.module.css'
 
 /** Poll interval of the authorization status while a flow is pending. */
@@ -179,9 +180,9 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
       <div className={css.titleRow}>
         <h3 className={css.title}>{draft.id === null ? t('newTitle') : t('editTitle')}</h3>
         <div className={css.titleActions}>
-          <button type="button" onClick={() => actions.cancelEdit()}>{t('backToList')}</button>
+          <button type="button" className={controls.button} onClick={() => actions.cancelEdit()}>{t('backToList')}</button>
           {draft.id !== null ? (
-            <button type="button" className={css.danger} disabled={busy !== null} onClick={() => void removeServer()}>
+            <button type="button" className={`${controls.button} ${css.danger}`} disabled={busy !== null} onClick={() => void removeServer()}>
               {busy === 'remove' ? t('removing') : t('remove')}
             </button>
           ) : null}
@@ -194,6 +195,7 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
         <span>{t('serverName')}</span>
         <input
           type="text"
+          className={controls.control}
           value={draft.serverName}
           placeholder={t('serverNameHint')}
           onChange={(event) => update({ serverName: event.currentTarget.value })}
@@ -203,6 +205,7 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
       <label className={css.field}>
         <span>{t('transport')}</span>
         <select
+          className={controls.control}
           value={draft.transport}
           onChange={(event) => update({ transport: event.currentTarget.value as McpDraft['transport'] })}
         >
@@ -217,6 +220,7 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
             <span>{t('command')}</span>
             <input
               type="text"
+              className={controls.control}
               value={draft.command}
               placeholder={t('commandPlaceholder')}
               onChange={(event) => update({ command: event.currentTarget.value })}
@@ -225,6 +229,7 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
           <label className={css.field}>
             <span>{t('args')}</span>
             <textarea
+              className={controls.control}
               rows={3}
               value={draft.argsText}
               placeholder={t('argsPlaceholder')}
@@ -241,6 +246,7 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
             <span>{t('cwd')}</span>
             <input
               type="text"
+              className={controls.control}
               value={draft.cwd}
               placeholder={t('cwdPlaceholder')}
               onChange={(event) => update({ cwd: event.currentTarget.value })}
@@ -254,6 +260,7 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
             <span>{t('url')}</span>
             <input
               type="url"
+              className={controls.control}
               value={draft.url}
               placeholder={t('urlPlaceholder')}
               onChange={(event) => update({ url: event.currentTarget.value })}
@@ -262,6 +269,7 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
           <label className={css.field}>
             <span>{t('headers')}</span>
             <textarea
+              className={controls.control}
               rows={2}
               value={draft.headersText}
               placeholder={t('headersPlaceholder')}
@@ -275,6 +283,7 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
         <span>{t('toolCallTimeoutMs')}</span>
         <input
           type="number"
+          className={controls.control}
           min={1}
           value={draft.toolCallTimeoutMs}
           onChange={(event) => update({ toolCallTimeoutMs: event.currentTarget.value })}
@@ -336,13 +345,13 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
       ) : null}
 
       <div className={css.actions}>
-        <button type="button" disabled={testRunning || busy !== null} onClick={() => void runTest()}>
+        <button type="button" className={controls.button} disabled={testRunning || busy !== null} onClick={() => void runTest()}>
           {testRunning ? t('testRunning') : t('test')}
         </button>
-        <button type="submit" className={css.primary} disabled={busy !== null || testRunning}>
+        <button type="submit" className={`${controls.button} ${controls.primary}`} disabled={busy !== null || testRunning}>
           {busy === 'save' ? t('saving') : t('save')}
         </button>
-        <button type="button" disabled={busy !== null} onClick={() => actions.cancelEdit()}>{t('cancel')}</button>
+        <button type="button" className={controls.button} disabled={busy !== null} onClick={() => actions.cancelEdit()}>{t('cancel')}</button>
       </div>
     </form>
   )

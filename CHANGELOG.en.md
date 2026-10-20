@@ -12,6 +12,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Supported DSH version**: **dsh `0.2.0-rc.2`** — the latest release is developed and verified on `0.2.0-rc.2` (declared in `package.json` → `dsh.supported`); older entries state the version verified at their time. When the DSH and plugin versions do not match, the Settings page reports a diagnosis (check whether the bundle is selected → restart `dsh web` → hard-refresh → upgrade both sides).
 - **Release convention**: every version entry states `- **Supported DSH version**: dsh <version>`, mirrored in the GitHub Release notes. The release body is written in **Chinese** (matching [CHANGELOG.md](CHANGELOG.md)), with heading levels mirroring the entry.
 
+## [1.14.1] - 2026-10-20
+
+- **Supported DSH version**: **dsh `0.2.0-rc.2`**
+
+### Fixed
+
+- **Plugin styles no longer leak into the host UI, and controls are styled by class only ([#14](https://github.com/ArvinQi/dsh-mcp/issues/14))**: `ServerForm.module.css` and `McpSettingsSection.module.css` each carried an unqualified `button { … }` rule, and several selectors ended in an element (`.field input`, `.row input`, `.actions button`, `.retryRow button`). The client stylesheets are injected into the host's `<head>` verbatim — the build's CSS Modules are an identity class map, not a scoping boundary — so those rules matched **every** matching element in the host page. The DSH composer's attach button (28×28, bottom-left) and send button (34×34, bottom-right) center their SVG with `display: grid; place-items: center` and declare no `padding` of their own; the leaked `padding: 5px 12px` shrank their content box from 16px / 22px to 4px / 10px, the 14px / 16px icon overflowed horizontally and was aligned to the start edge, so the icon drifted right inside the circle (measured +5.0 px and +3.0 px). **No style targets an element any more** (`button` / `input` / `select` / `textarea` / `label` / `p` are all gone): the base control styles now live in the new `src/client/controls.module.css` as classes — `.button` (with `:hover` / `:focus-visible` / `:disabled`), `.buttonSmall`, `.primary`, `.control` (shared by `<input>` / `<select>` / `<textarea>`), `.controlMono` and `.checkbox`. Components import that module for the class **names** only; their own sheets keep layout plus the `.active` / `.danger` / `.dangerButton` / `.moduleTitle` modifiers, all matched by class. Because an identity class map makes class names global, the shared classes are defined exactly once, in `controls.module.css`; specificity no longer needs tricks (the previous `:where()` wrappers are gone) — within that one sheet `.primary` follows `.button`, and the component sheets are injected after it
+
+### Notes
+
+- `test/client-style-scope.test.mjs` was rewritten: (1) every selector of `src/client/*.module.css` must be a pure class chain (an element selector, `*` or `:root` fails); (2) the bundle is loaded through the shell's loader wire format and the stylesheets it actually injects are checked the same way; (3) the shared classes must be defined once, `controls.module.css` must be injected first, and the `.primary` / `.buttonSmall` / `.controlMono` rules must follow their base classes; (4) every `<button>` in the `.tsx` sources must carry `controls.button` so a missed class cannot silently render an unstyled control. It fails against the pre-fix build
+- `scripts/build.mjs` strips CSS comments before computing the identity class map, so class names mentioned only in a comment no longer become dead keys; the build header now states that injected styles are global, that every rule must be a pure class selector, and that shared control classes live in `controls.module.css`
+- Only the client half changed (the host `lib/index.js` and all Remote interfaces are untouched), so upgrading the plugin and hard-refreshing the DSH page is enough to see the centered icons
+
 ## [1.14.0] - 2026-10-13
 
 - **Supported DSH version**: **dsh `0.2.0-rc.2`**

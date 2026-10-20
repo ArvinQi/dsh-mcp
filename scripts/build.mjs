@@ -9,8 +9,18 @@
  * CSS Modules are handled by an esbuild onLoad plugin: each `.module.css` is
  * rewritten to a JS module that (1) injects the stylesheet text into a
  * <style data-plugin="dsh-mcp"> tag and (2) default-exports an identity class
- * map (class name -> class name; the standalone plugin does not need hashed
- * names because its UI is scoped to the settings section it owns).
+ * map (class name -> class name).
+ *
+ * The identity map means **the stylesheet text is global**: it lands in the
+ * host page's <head> and every selector in it can match host DOM. So every
+ * rule must be a chain of class selectors, never a bare tag, `*`, or a
+ * host-wide pseudo-class like `:root`. Issue #14 is exactly that failure: a
+ * bare `button {}` rule restyled every button of the DSH shell and pushed the
+ * composer icons off-center. Control styling therefore lives in class form —
+ * the shared classes in `src/client/controls.module.css` are defined there
+ * once and every component imports that module for the class *names*.
+ * `test/client-style-scope.test.mjs` enforces the invariant on the sources and
+ * on this build's output.
  *
  * esbuild is resolved from the DSH source checkout (the only place it is
  * installed); the plugin package itself has zero runtime dependencies.
@@ -73,15 +83,22 @@ function resolveEsbuild(checkout) {
 const require = createRequire(resolveEsbuild(CHECKOUT))
 const esbuild = require('esbuild')
 
-/** Identity class map for one CSS module + the stylesheet text, as a JS module. */
+/**
+ * Identity class map for one CSS module + the stylesheet text, as a JS module.
+ *
+ * The class names are read from the selectors only (comments are stripped
+ * first): a rule's explanatory comment may legitimately name a class that this
+ * file does not define, and the identity map must not grow dead keys from it.
+ */
 function cssModuleLoader() {
   return {
     name: 'dsh-mcp-css-modules',
     setup(build) {
       build.onLoad({ filter: /\.module\.css$/ }, (args) => {
         const css = readFileSync(args.path, 'utf8')
+        const selectorText = css.replace(/\/\*[\s\S]*?\*\//g, '')
         const classes = [...new Set(
-          [...css.matchAll(/\.([A-Za-z_][A-Za-z0-9_-]*)/g)].map((match) => match[1]),
+          [...selectorText.matchAll(/\.([A-Za-z_][A-Za-z0-9_-]*)/g)].map((match) => match[1]),
         )]
         const map = Object.fromEntries(classes.map((name) => [name, name]))
         const file = args.path.split('/').pop()

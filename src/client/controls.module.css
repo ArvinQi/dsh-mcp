@@ -1,0 +1,93 @@
+/* Shared control styles for the client UI.
+ *
+ * Every `.module.css` in this package is injected into the host page's <head>
+ * verbatim — the build's class map is the identity, so there is no scoping
+ * boundary and a class name is global. Two consequences:
+ *
+ *  1. Elements are styled by class only, never by tag. A bare `button` /
+ *     `input` selector would restyle the host shell (issue #14: the composer's
+ *     icon buttons lost their centering to a leaked `padding: 5px 12px`).
+ *  2. Each class below is defined **exactly here**, once. Another stylesheet
+ *     re-defining `.button` would silently change every control in the plugin,
+ *     so components import this module only for the class *names* and keep
+ *     their layout/variant rules in their own file.
+ */
+
+.button {
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  padding: 5px 12px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 13px;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 1px;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Compact action, e.g. the inline "retry" button of the global-env editor. */
+.buttonSmall {
+  padding: 3px 10px;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.primary {
+  border-color: var(--dsw-alias-button-primary-fill);
+  background: var(--dsw-alias-button-primary-fill);
+  color: var(--dsw-alias-label-primary-foreground);
+}
+
+.primary:hover {
+  background: var(--dsw-alias-button-primary-hover);
+}
+
+/* Text controls: one class for <input>, <select> and <textarea>, so no rule
+   has to name an element. */
+.control {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  padding: 6px 10px;
+  outline: none;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 13px;
+  resize: vertical;
+}
+
+.control::placeholder {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.control:focus-visible {
+  border-color: var(--dsw-alias-brand-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--dsw-alias-brand-primary) 18%, transparent);
+}
+
+/* Denser monospace variant: the env rows of the global-env editor. */
+.controlMono {
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.checkbox {
+  cursor: pointer;
+}

@@ -12,6 +12,20 @@
 - **支持版本**：**dsh `0.2.0-rc.2`** —— 最新版本在 `0.2.0-rc.2` 上开发与验证（`package.json` → `dsh.supported` 同步声明）；历史版本条目各自声明当时验证的版本。DSH 与插件版本不匹配时，设置页会给出排查诊断（核对 bundle 是否已选中 → 重启 `dsh web` → 硬刷新 → 同步升级）。
 - **发版约定**：每个版本条目都要声明 `- **支持版本**：dsh <版本>`，并在 GitHub Release notes 中同步。Release 正文用**中文**（与本文档一致），标题层级与条目一致。
 
+## [1.14.1] - 2026-10-20
+
+- **支持版本**：**dsh `0.2.0-rc.2`**
+
+### 修复
+
+- **插件样式不再泄漏到宿主界面，控件样式一律改为 class（[#14](https://github.com/ArvinQi/dsh-mcp/issues/14)）**：`ServerForm.module.css` 与 `McpSettingsSection.module.css` 里各有一条没有父级限定的 `button { … }` 规则，另外还有 `.field input` / `.row input` / `.actions button` / `.retryRow button` 等以元素为右端的选择器；而客户端样式表是原样注入宿主 `<head>` 的——构建的 CSS Modules 只做恒等类名映射，没有任何作用域边界——于是这些规则命中了宿主页面上对应的**每一个**元素。DSH 输入框左下角的加号按钮（28×28）与右下角的发送按钮（34×34）靠 `display: grid; place-items: center` 让图标居中、自身不声明 `padding`，被泄漏的 `padding: 5px 12px` 把内容盒从 16px / 22px 挤到 4px / 10px，14px / 16px 的图标横向溢出、按起始边对齐，图标因此在圆内向右偏移（实测 +5.0 px 与 +3.0 px）。现在**不再有任何以元素为目标的样式**（`button` / `input` / `select` / `textarea` / `label` / `p` 全部消失）：基础控件样式集中到新的 `src/client/controls.module.css`，以类名定义——`.button`（连同 `:hover` / `:focus-visible` / `:disabled`）、`.buttonSmall`、`.primary`、`.control`（`<input>` / `<select>` / `<textarea>` 共用）、`.controlMono`、`.checkbox`；各组件只从这个模块取**类名**，自己的样式表保留布局与 `.active` / `.danger` / `.dangerButton` / `.moduleTitle` 等修饰类，也全部只按 class 匹配。因为恒等类名映射下同名类就是全局的，共享类只在 `controls.module.css` 里定义一次；优先级也不再依赖技巧（此前用 `:where()` 压低权重），改为「同一个表内 `.primary` 排在 `.button` 之后 + 组件样式表固定在共享表之后注入」
+
+### 说明
+
+- 重写 `test/client-style-scope.test.mjs`：① 逐条检查 `src/client/*.module.css` 的选择器，要求是纯 class 链（出现元素选择器 / `*` / `:root` 即失败）；② 按宿主加载器格式装载 `lib/client.js`，检查它实际注入的样式表同样没有元素选择器；③ 断言共享控件类只定义一次、`controls.module.css` 排在其它样式表之前，且 `.primary` / `.buttonSmall` / `.controlMono` 规则顺序保证变体覆盖基础类；④ 扫描所有 `.tsx`，每个 `<button>` 必须带 `controls.button`（避免漏类名退回无样式）。用修复前的构建产物跑该测试会失败
+- `scripts/build.mjs` 生成恒等类名表前先剥离 CSS 注释（注释里提到的类名不再成为死 key）；构建脚本头部改为说明「注入的样式表是全局的，规则必须是纯 class 选择器，控件共享类集中在 controls.module.css」
+- 本次只有客户端包内容变化（宿主 `lib/index.js` 与所有 Remote 接口未变），升级插件后硬刷新 DSH 页面即可看到图标居中
+
 ## [1.14.0] - 2026-10-13
 
 - **支持版本**：**dsh `0.2.0-rc.2`**

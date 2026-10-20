@@ -30,16 +30,12 @@
   color: var(--dsw-alias-label-secondary);
 }
 
-.mode label {
+.modeOption {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   cursor: pointer;
   user-select: none;
-}
-
-.mode input {
-  margin: 0;
 }
 
 .hint {
@@ -75,7 +71,7 @@
   line-height: 18px;
 }
 
-.row input {
+.toolSwitch {
   flex: none;
   margin: 0;
 }

@@ -9,6 +9,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { McpEnvVarView } from './types.ts'
 import type { McpSettingsLocaleKey } from './locales.ts'
+import controls from './controls.module.css'
 import css from './GlobalEnvEditor.module.css'
 
 /** One editable row in the editor. */
@@ -185,7 +186,7 @@ export function GlobalEnvEditor({ injected, t, onApplied }: GlobalEnvEditorProps
         <div key={row.key} className={css.row}>
           <input
             type="text"
-            className={css.name}
+            className={`${controls.control} ${controls.controlMono} ${css.name}`}
             value={row.name}
             placeholder={t('globalEnvName')}
             aria-label={t('globalEnvName')}
@@ -193,7 +194,7 @@ export function GlobalEnvEditor({ injected, t, onApplied }: GlobalEnvEditorProps
           />
           <input
             type={row.secret ? 'password' : 'text'}
-            className={css.value}
+            className={`${controls.control} ${controls.controlMono} ${css.value}`}
             value={row.value}
             placeholder={row.secret && row.configured ? '••••••••' : t('globalEnvValue')}
             aria-label={t('globalEnvValue')}
@@ -202,13 +203,14 @@ export function GlobalEnvEditor({ injected, t, onApplied }: GlobalEnvEditorProps
           <label className={`${css.secretToggle} ${row.secret ? css.secretOn : ''}`} title={t('globalEnvSecretHint')}>
             <input
               type="checkbox"
+              className={controls.checkbox}
               checked={row.secret}
               aria-label={t('globalEnvSecret')}
               onChange={(event) => update(row.key, { secret: event.currentTarget.checked })}
             />
             {t('globalEnvSecret')}
           </label>
-          <button type="button" className={css.danger} aria-label={t('globalEnvRemove')} onClick={() => remove(row.key)}>
+          <button type="button" className={`${controls.button} ${css.danger}`} aria-label={t('globalEnvRemove')} onClick={() => remove(row.key)}>
             ✕
           </button>
         </div>
@@ -216,15 +218,15 @@ export function GlobalEnvEditor({ injected, t, onApplied }: GlobalEnvEditorProps
       {loadFailed ? (
         <div className={css.retryRow}>
           <p className={css.error} role="alert">{t('globalEnvLoadFailed')}</p>
-          <button type="button" onClick={reload}>{t('globalEnvRetry')}</button>
+          <button type="button" className={`${controls.button} ${controls.buttonSmall}`} onClick={reload}>{t('globalEnvRetry')}</button>
         </div>
       ) : null}
       {error !== null && !loadFailed ? <p className={css.error} role="alert">{error}</p> : null}
       {notice !== null ? <p className={css.notice} role="status">{notice}</p> : null}
       <div className={css.actions}>
-        <button type="button" disabled={busy} onClick={add}>{t('globalEnvAdd')}</button>
-        <button type="button" disabled={busy} onClick={() => setBulkOpen(true)}>{t('globalEnvBulk')}</button>
-        <button type="button" className={css.primary} disabled={busy} onClick={save}>
+        <button type="button" className={controls.button} disabled={busy} onClick={add}>{t('globalEnvAdd')}</button>
+        <button type="button" className={controls.button} disabled={busy} onClick={() => setBulkOpen(true)}>{t('globalEnvBulk')}</button>
+        <button type="button" className={`${controls.button} ${controls.primary}`} disabled={busy} onClick={save}>
           {busy ? t('globalEnvSaving') : t('globalEnvSave')}
         </button>
       </div>
@@ -243,8 +245,8 @@ export function GlobalEnvEditor({ injected, t, onApplied }: GlobalEnvEditorProps
               onChange={(event) => setBulkText(event.currentTarget.value)}
             />
             <div className={css.actions}>
-              <button type="button" onClick={() => setBulkOpen(false)}>{t('cancel')}</button>
-              <button type="button" className={css.primary} onClick={applyBulk}>{t('globalEnvBulkOk')}</button>
+              <button type="button" className={controls.button} onClick={() => setBulkOpen(false)}>{t('cancel')}</button>
+              <button type="button" className={`${controls.button} ${controls.primary}`} onClick={applyBulk}>{t('globalEnvBulkOk')}</button>
             </div>
           </div>
         </div>

@@ -10,6 +10,7 @@ import { GlobalEnvEditor, type GlobalEnvRemote } from './GlobalEnvEditor.tsx'
 import type { McpToolControlRemote } from './ToolControlSection.tsx'
 import type { McpSettingsLocaleKey } from './locales.ts'
 import { createMcpManagerStore, type McpDraft, type McpTestOutcome } from './mcp-store.ts'
+import controls from './controls.module.css'
 import css from './McpSettingsSection.module.css'
 
 /** One adopt/release attempt: a business failure, or an advisory note. */
@@ -416,10 +417,10 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
   if (state.loadState === 'error') {
     return (
       <div className={css.failure}>
-        <p role="alert">{t('loadError')}</p>
-        {hostMissing ? <p className={css.muted}>{t('loadErrorHostMissing')}</p> : null}
+        <p className={css.failureText} role="alert">{t('loadError')}</p>
+        {hostMissing ? <p className={`${css.muted} ${css.failureText}`}>{t('loadErrorHostMissing')}</p> : null}
         {loadErrorDetail !== null ? <pre className={css.muted}>{loadErrorDetail}</pre> : null}
-        <button type="button" onClick={() => { setLoadState('loading'); load() }}>{t('retry')}</button>
+        <button type="button" className={controls.button} onClick={() => { setLoadState('loading'); load() }}>{t('retry')}</button>
       </div>
     )
   }
@@ -484,7 +485,7 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
       <div className={css.module}>
         <button
           type="button"
-          className={css.moduleTitle}
+          className={`${controls.button} ${css.moduleTitle}`}
           aria-expanded={envOpen}
           onClick={() => setEnvOpen(open => !open)}
         >
@@ -511,13 +512,13 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
           <div className={css.configActions}>
             <button
               type="button"
-              className={jsonOpen ? css.active : undefined}
+              className={jsonOpen ? `${controls.button} ${css.active}` : controls.button}
               aria-expanded={jsonOpen}
               onClick={() => setJsonOpen(open => !open)}
             >
               {t('serversJson')}
             </button>
-            <button type="button" className={css.primary} onClick={beginCreate}>{t('addServer')}</button>
+            <button type="button" className={`${controls.button} ${controls.primary}`} onClick={beginCreate}>{t('addServer')}</button>
           </div>
         </div>
         {actionError !== null ? (
@@ -651,7 +652,7 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
                   </div>
                   <div className={css.rowActions}>
                     {declared || server.conflict || server.pendingTakeover ? null : (
-                      <button type="button" disabled={isRefreshing} onClick={() => void toggleEnabled(server)}>
+                      <button type="button" className={controls.button} disabled={isRefreshing} onClick={() => void toggleEnabled(server)}>
                         {server.enabled ? t('disable') : t('enabled')}
                       </button>
                     )}
@@ -663,31 +664,31 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
                     {oauthNeedsAuth && !server.conflict && !server.pendingTakeover ? (
                       <button
                         type="button"
-                        className={oauthBlocks ? css.dangerButton : undefined}
+                        className={oauthBlocks ? `${controls.button} ${css.dangerButton}` : controls.button}
                         onClick={() => void runOAuth(server)}
                       >
                         {oauthInFlight ? t('oauthInProgress') : t('oauthAuthorize')}
                       </button>
                     ) : null}
                     {declared ? null : (
-                      <button type="button" disabled={isRefreshing} onClick={() => refreshServer(server.serverName)}>
+                      <button type="button" className={controls.button} disabled={isRefreshing} onClick={() => refreshServer(server.serverName)}>
                         {isRefreshing ? t('refreshing') : t('refresh')}
                       </button>
                     )}
                     {declared && server.adoptable ? (
-                      <button type="button" disabled={adopting.has(server.serverName)} onClick={() => void runAdopt(server)}>
+                      <button type="button" className={controls.button} disabled={adopting.has(server.serverName)} onClick={() => void runAdopt(server)}>
                         {adopting.has(server.serverName) ? t('adopting') : t('adopt')}
                       </button>
                     ) : null}
                     {server.adopted ? (
-                      <button type="button" disabled={adopting.has(server.serverName)} onClick={() => void runAdopt(server)}>
+                      <button type="button" className={controls.button} disabled={adopting.has(server.serverName)} onClick={() => void runAdopt(server)}>
                         {adopting.has(server.serverName) ? t('releasing') : t('release')}
                       </button>
                     ) : null}
-                    <button type="button" onClick={() => toggleExpand(server.serverName)}>
+                    <button type="button" className={controls.button} onClick={() => toggleExpand(server.serverName)}>
                       {isExpanded ? t('toolsCollapse') : t('toolsExpand')}
                     </button>
-                    {declared ? null : <button type="button" onClick={() => beginEdit(server)}>{t('edit')}</button>}
+                    {declared ? null : <button type="button" className={controls.button} onClick={() => beginEdit(server)}>{t('edit')}</button>}
                   </div>
                 </div>
                 {isExpanded ? (

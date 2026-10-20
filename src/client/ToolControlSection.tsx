@@ -11,6 +11,7 @@ import type {
   McpToolInjectionMode, McpToolView, McpToolsState,
 } from './types.ts'
 import type { McpSettingsLocaleKey } from './locales.ts'
+import controls from './controls.module.css'
 import css from './ToolControlSection.module.css'
 
 /** Host Remote face required by this section. */
@@ -86,6 +87,7 @@ export function ToolControlSection({ injected, t }: ToolControlSectionProps): Re
         <label key={tool.name} className={css.row} title={tool.name}>
           <input
             type="checkbox"
+            className={css.toolSwitch}
             checked={tool.enabled}
             onChange={() => toggle(tool)}
           />
@@ -101,7 +103,7 @@ export function ToolControlSection({ injected, t }: ToolControlSectionProps): Re
       <h3 className={css.title}>{t('toolsTitle')}</h3>
       <div className={css.mode}>
         <span className={css.modeLabel}>{t('toolsModeLabel')}</span>
-        <label>
+        <label className={css.modeOption}>
           <input
             type="radio"
             name="mcp-tool-mode"
@@ -110,7 +112,7 @@ export function ToolControlSection({ injected, t }: ToolControlSectionProps): Re
           />
           {t('toolsModeFull')}
         </label>
-        <label>
+        <label className={css.modeOption}>
           <input
             type="radio"
             name="mcp-tool-mode"

@@ -16,7 +16,7 @@
 
 ### 修复
 
-- **Windows OAuth 授权页无法打开**：改用 `rundll32.exe url.dll,FileProtocolHandler`，不再直接启动 `cmd.exe` 内置命令 `start`；授权 URL 作为单个原样参数传递，不经过 shell，避免查询参数中的 `&` 被拆成命令。macOS/Linux 打开方式与尽力打开语义保持不变（#16）
+- **Windows OAuth 授权页无法打开**：改用 `rundll32.exe url.dll,FileProtocolHandler`，不再直接启动 `cmd.exe` 内置命令 `start`；授权 URL 作为单个原样参数传递，不经过 shell，避免查询参数中的 `&` 被拆成命令。macOS/Linux 打开方式与尽力打开语义保持不变（#16；PR #17，感谢 @Nyarlathoteppppp）
 
 ## [1.14.1] - 2026-10-20
 

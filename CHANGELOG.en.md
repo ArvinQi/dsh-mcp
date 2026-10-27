@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Windows OAuth authorization page never opens**: use `rundll32.exe url.dll,FileProtocolHandler` instead of spawning the `cmd.exe` builtin `start` directly; pass the authorization URL as one untouched argument without a shell so query-string `&` characters cannot split commands. macOS/Linux openers and best-effort behavior are unchanged (#16)
+- **Windows OAuth authorization page never opens**: use `rundll32.exe url.dll,FileProtocolHandler` instead of spawning the `cmd.exe` builtin `start` directly; pass the authorization URL as one untouched argument without a shell so query-string `&` characters cannot split commands. macOS/Linux openers and best-effort behavior are unchanged (#16; PR #17, thanks @Nyarlathoteppppp)
 
 ## [1.14.1] - 2026-10-20
 

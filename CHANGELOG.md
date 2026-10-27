@@ -12,6 +12,12 @@
 - **支持版本**：**dsh `0.2.0-rc.2`** —— 最新版本在 `0.2.0-rc.2` 上开发与验证（`package.json` → `dsh.supported` 同步声明）；历史版本条目各自声明当时验证的版本。DSH 与插件版本不匹配时，设置页会给出排查诊断（核对 bundle 是否已选中 → 重启 `dsh web` → 硬刷新 → 同步升级）。
 - **发版约定**：每个版本条目都要声明 `- **支持版本**：dsh <版本>`，并在 GitHub Release notes 中同步。Release 正文用**中文**（与本文档一致），标题层级与条目一致。
 
+## [Unreleased]
+
+### 修复
+
+- **Windows OAuth 授权页无法打开**：改用 `rundll32.exe url.dll,FileProtocolHandler`，不再直接启动 `cmd.exe` 内置命令 `start`；授权 URL 作为单个原样参数传递，不经过 shell，避免查询参数中的 `&` 被拆成命令。macOS/Linux 打开方式与尽力打开语义保持不变（#16）
+
 ## [1.14.1] - 2026-10-20
 
 - **支持版本**：**dsh `0.2.0-rc.2`**

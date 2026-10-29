@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Supported DSH version**: **dsh `0.2.0-rc.2`** — the latest release is developed and verified on `0.2.0-rc.2` (declared in `package.json` → `dsh.supported`); older entries state the version verified at their time. When the DSH and plugin versions do not match, the Settings page reports a diagnosis (check whether the bundle is selected → restart `dsh web` → hard-refresh → upgrade both sides).
 - **Release convention**: every version entry states `- **Supported DSH version**: dsh <version>`, mirrored in the GitHub Release notes. The release body is written in **Chinese** (matching [CHANGELOG.md](CHANGELOG.md)), with heading levels mirroring the entry.
 
+## [Unreleased]
+
+### Fixed
+
+- **Windows OAuth authorization page never opens**: use `rundll32.exe url.dll,FileProtocolHandler` instead of spawning the `cmd.exe` builtin `start` directly; pass the authorization URL as one untouched argument without a shell so query-string `&` characters cannot split commands. macOS/Linux openers and best-effort behavior are unchanged (#16; PR #17, thanks @Nyarlathoteppppp)
+
 ## [1.14.1] - 2026-10-20
 
 - **Supported DSH version**: **dsh `0.2.0-rc.2`**

@@ -101,6 +101,7 @@ dsh-mcp/
 │   ├── patch-writer.js   managed-block writer: disables a declaration on takeover (backup/atomic/idempotent)
 │   ├── mcp-client.js     vendored MCP client (from @deepseek-ai/dsh-mcp-client, with tool-list stability extension)
 │   ├── oauth.js          MCP OAuth client provider (authorization-code + PKCE, loopback callback, token persistence)
+│   ├── browser-command.js per-platform browser opener: rundll32 on Windows, URL never through a shell (1.14.2)
 │   ├── system-ca.js      system CA trust: merges the OS roots into Node's default store (1.14.0)
 │   ├── probe.js          vendored connection probe (from mcp-client/src/probe.ts)
 │   ├── transport.js      vendored transport factory (from mcp-client/src/transport.ts)

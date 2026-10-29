@@ -107,6 +107,7 @@ dsh-mcp/
 │   ├── patch-writer.js   受管块写入器：接管时在 patch 文件里停用声明行（备份/原子/幂等）
 │   ├── mcp-client.js     vendored MCP 客户端（源自 @deepseek-ai/dsh-mcp-client，含工具列表稳定扩展）
 │   ├── oauth.js          MCP OAuth 客户端提供者（授权码 + PKCE、回环回调、token 持久化）
+│   ├── browser-command.js 按平台选择浏览器打开命令：Windows 走 rundll32，URL 不经过 shell（1.14.2）
 │   ├── system-ca.js      系统证书信任：把操作系统根证书并入 Node 默认库（1.14.0）
 │   ├── probe.js          vendored 连接探测（源自 mcp-client/src/probe.ts）
 │   ├── transport.js      vendored 传输工厂（源自 mcp-client/src/transport.ts）

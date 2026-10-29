@@ -12,11 +12,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Supported DSH version**: **dsh `0.2.0-rc.2`** — the latest release is developed and verified on `0.2.0-rc.2` (declared in `package.json` → `dsh.supported`); older entries state the version verified at their time. When the DSH and plugin versions do not match, the Settings page reports a diagnosis (check whether the bundle is selected → restart `dsh web` → hard-refresh → upgrade both sides).
 - **Release convention**: every version entry states `- **Supported DSH version**: dsh <version>`, mirrored in the GitHub Release notes. The release body is written in **Chinese** (matching [CHANGELOG.md](CHANGELOG.md)), with heading levels mirroring the entry.
 
-## [Unreleased]
+## [1.14.2] - 2026-10-29
+
+- **Supported DSH version**: **dsh `0.2.0-rc.2`**
 
 ### Fixed
 
-- **Windows OAuth authorization page never opens**: use `rundll32.exe url.dll,FileProtocolHandler` instead of spawning the `cmd.exe` builtin `start` directly; pass the authorization URL as one untouched argument without a shell so query-string `&` characters cannot split commands. macOS/Linux openers and best-effort behavior are unchanged (#16; PR #17, thanks @Nyarlathoteppppp)
+- **Windows OAuth authorization page never opens ([#16](https://github.com/ArvinQi/dsh-mcp/issues/16))**: `openBrowser` used to run `spawn("start", [url])` on Windows, but `start` is a `cmd.exe` builtin rather than an executable, so spawning it without a shell only ever produced `ENOENT` — and `child.on("error", () => {})` swallowed that error. The result was that on Windows the authorization page never opened and nothing was reported (both call sites in `lib/oauth.js`, `oauthStart` and `allowBrowserOnMount`, were affected). It now uses `rundll32.exe url.dll,FileProtocolHandler`, passing the authorization URL as **one untouched argument** with no shell involved, so `&` in the query string cannot split the command — which also avoids the command-injection surface of handing the URL back to a shell via `cmd /c start "" <url>`. The macOS (`open`) / Linux (`xdg-open`) openers and the best-effort semantics (error callback, `detached`, `unref`) are unchanged (PR [#17](https://github.com/ArvinQi/dsh-mcp/pull/17), thanks [@Nyarlathoteppppp](https://github.com/Nyarlathoteppppp))
+
+### Notes
+
+- New zero-dependency module `lib/browser-command.js`: `browserCommand(url, platform)` returns the "command + argument array" per platform, lifting "which program opens the URL" out of `openBrowser` so it can be asserted
+- New `test/oauth-browser.test.mjs`: asserts that on win32 an authorization URL containing `&` is handed to `rundll32.exe url.dll,FileProtocolHandler` as a single argument, and that the darwin / linux commands are unchanged; the test does not need the DSH module closure, so it also runs in CI's `npm test` (unlike `oauth-flow.test.mjs`, which is skipped there)
+- Only the host-side way of opening the browser changed: the client bundle `lib/client.js` and every Remote interface are untouched, so no rebuild is needed after upgrading
 
 ## [1.14.1] - 2026-10-20
 

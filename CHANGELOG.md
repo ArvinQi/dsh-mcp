@@ -12,11 +12,19 @@
 - **支持版本**：**dsh `0.2.0-rc.2`** —— 最新版本在 `0.2.0-rc.2` 上开发与验证（`package.json` → `dsh.supported` 同步声明）；历史版本条目各自声明当时验证的版本。DSH 与插件版本不匹配时，设置页会给出排查诊断（核对 bundle 是否已选中 → 重启 `dsh web` → 硬刷新 → 同步升级）。
 - **发版约定**：每个版本条目都要声明 `- **支持版本**：dsh <版本>`，并在 GitHub Release notes 中同步。Release 正文用**中文**（与本文档一致），标题层级与条目一致。
 
-## [Unreleased]
+## [1.14.2] - 2026-10-29
+
+- **支持版本**：**dsh `0.2.0-rc.2`**
 
 ### 修复
 
-- **Windows OAuth 授权页无法打开**：改用 `rundll32.exe url.dll,FileProtocolHandler`，不再直接启动 `cmd.exe` 内置命令 `start`；授权 URL 作为单个原样参数传递，不经过 shell，避免查询参数中的 `&` 被拆成命令。macOS/Linux 打开方式与尽力打开语义保持不变（#16；PR #17，感谢 @Nyarlathoteppppp）
+- **Windows OAuth 授权页无法打开（[#16](https://github.com/ArvinQi/dsh-mcp/issues/16)）**：此前 `openBrowser` 在 Windows 上执行 `spawn("start", [url])`，而 `start` 是 `cmd.exe` 的内置命令、并非可执行文件，不经过 shell 启动只会得到 `ENOENT`，该错误又被 `child.on("error", () => {})` 静默吞掉，于是 Windows 上发起 OAuth 授权时浏览器根本不打开、也没有任何提示（`lib/oauth.js` 里 `oauthStart` 与 `allowBrowserOnMount` 两处调用都受影响）。现改用 `rundll32.exe url.dll,FileProtocolHandler`，授权 URL 作为**单个原样参数**传递、不经过 shell，因此查询参数中的 `&` 不会被拆成命令；同时也避免了 `cmd /c start "" <url>` 那种把 URL 重新交给 shell 解析带来的命令注入面。macOS（`open`）/ Linux（`xdg-open`）的打开方式与「尽力打开」（错误回调、`detached`、`unref`）语义均保持不变（PR [#17](https://github.com/ArvinQi/dsh-mcp/pull/17)，感谢 [@Nyarlathoteppppp](https://github.com/Nyarlathoteppppp)）
+
+### 说明
+
+- 新增零依赖模块 `lib/browser-command.js`：`browserCommand(url, platform)` 按平台返回「命令 + 参数数组」，把「用哪个程序打开」从 `openBrowser` 里剥出来以便断言
+- 新增 `test/oauth-browser.test.mjs`：断言 win32 下含 `&` 的授权 URL 作为单个参数交给 `rundll32.exe url.dll,FileProtocolHandler`，且 darwin / linux 的启动命令保持不变；该测试不依赖 DSH 模块闭包，因此在 CI 的 `npm test` 中也会执行（不会像 `oauth-flow.test.mjs` 那样被跳过）
+- 本次只改变宿主侧打开浏览器的方式：客户端包 `lib/client.js` 与所有 Remote 接口未变，升级后无需重新构建产物
 
 ## [1.14.1] - 2026-10-20
 

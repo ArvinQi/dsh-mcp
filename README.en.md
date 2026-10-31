@@ -277,10 +277,10 @@ Check in order:
   `authorization_response_iss_parameter_supported: true` in
   `/.well-known/oauth-authorization-server`, yet its callback URL carries no `iss` parameter (Notion's
   `https://mcp.notion.com` does exactly this — see
-  [#18](https://github.com/ArvinQi/dsh-mcp/issues/18)). Such an inaccurate claim is now tolerated (see
-  `[Unreleased]` in CHANGELOG): the claim is ignored, with a warning in the log, only when the callback
-  really carries no `iss`, while a callback that does carry `iss` is still compared strictly. Upgrade to a
-  build containing the fix, restart `dsh web`, and click "Authorize with OAuth" once more;
+  [#18](https://github.com/ArvinQi/dsh-mcp/issues/18)). Such an inaccurate claim is tolerated **since
+  1.14.3**: the claim is ignored, with a warning in the log, only when the callback
+  really carries no `iss`, while a callback that does carry `iss` is still compared strictly. Upgrade and
+  restart `dsh web`, then click "Authorize with OAuth" once more;
 - If the log line instead shows a callback that carried an `iss` differing from the metadata `issuer`,
   that is **not** a metadata problem but a genuine authorization-server mix-up risk, still rejected per
   RFC 9207 — check that the MCP server URL and the authorization server really belong together.

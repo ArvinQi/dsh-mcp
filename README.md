@@ -268,8 +268,8 @@ dsh plugin --profile web add link:<本仓库绝对路径>
 - 这是授权服务器的元数据与真实行为不一致：它在 `/.well-known/oauth-authorization-server` 里声明
   `authorization_response_iss_parameter_supported: true`，但回调 URL 里并不带 `iss` 参数
   （Notion 的 `https://mcp.notion.com` 就是如此，见 [#18](https://github.com/ArvinQi/dsh-mcp/issues/18)）。
-  该不实声明已自动容忍（见 CHANGELOG 的 `[Unreleased]`）：只有当回调确实没带 `iss` 时，才忽略该声明并打一条
-  warning 日志，带 `iss` 的回调仍会严格比对；升级到含该修复的版本并重启 `dsh web` 后，重新点一次
+  该不实声明自 **1.14.3** 起已自动容忍：只有当回调确实没带 `iss` 时，才忽略该声明并打一条
+  warning 日志，带 `iss` 的回调仍会严格比对；升级并重启 `dsh web` 后，重新点一次
   「OAuth 授权」即可；
 - 若日志里的 warning 显示回调带了 `iss` 但与元数据 `issuer` 不一致，那**不是**元数据问题，而是真正的
   授权服务器混同风险，按 RFC 9207 仍会拒绝——请核对 MCP 服务器 URL 与授权服务器是否配对。

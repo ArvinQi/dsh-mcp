@@ -271,6 +271,20 @@ Check in order:
   in the OS keychain, or fall back to `NODE_OPTIONS=--use-system-ca` / `NODE_EXTRA_CA_CERTS`, then
   restart the host and hard-refresh.
 
+**Q5: The browser already shows a successful authorization, but the plugin reports `Issuer mismatch in authorization response (RFC 9207)`?**
+
+- The authorization server's metadata does not match its behaviour: it advertises
+  `authorization_response_iss_parameter_supported: true` in
+  `/.well-known/oauth-authorization-server`, yet its callback URL carries no `iss` parameter (Notion's
+  `https://mcp.notion.com` does exactly this — see
+  [#18](https://github.com/ArvinQi/dsh-mcp/issues/18)). Such an inaccurate claim is now tolerated (see
+  `[Unreleased]` in CHANGELOG): the claim is ignored, with a warning in the log, only when the callback
+  really carries no `iss`, while a callback that does carry `iss` is still compared strictly. Upgrade to a
+  build containing the fix, restart `dsh web`, and click "Authorize with OAuth" once more;
+- If the log line instead shows a callback that carried an `iss` differing from the metadata `issuer`,
+  that is **not** a metadata problem but a genuine authorization-server mix-up risk, still rejected per
+  RFC 9207 — check that the MCP server URL and the authorization server really belong together.
+
 **Add a server**:
 
 1. Click **Add server** (the form expands inline above the list).

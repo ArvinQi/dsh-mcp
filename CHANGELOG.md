@@ -12,6 +12,19 @@
 - **支持版本**：**dsh `0.2.0-rc.2`** —— 最新版本在 `0.2.0-rc.2` 上开发与验证（`package.json` → `dsh.supported` 同步声明）；历史版本条目各自声明当时验证的版本。DSH 与插件版本不匹配时，设置页会给出排查诊断（核对 bundle 是否已选中 → 重启 `dsh web` → 硬刷新 → 同步升级）。
 - **发版约定**：每个版本条目都要声明 `- **支持版本**：dsh <版本>`，并在 GitHub Release notes 中同步。Release 正文用**中文**（与本文档一致），标题层级与条目一致。
 
+## [Unreleased]
+
+- **支持版本**：**dsh `0.2.0-rc.2`**
+
+### 修复
+
+- **授权服务器「声明支持 RFC 9207 `iss` 却不在回调里带」时，浏览器已显示授权成功、插件仍判失败（[#18](https://github.com/ArvinQi/dsh-mcp/issues/18)）**：Notion 的授权服务器元数据（`https://mcp.notion.com/.well-known/oauth-authorization-server`）写着 `authorization_response_iss_parameter_supported: true`，但真实的回调 URL 里**没有** `iss` 参数；MCP SDK 2.0.0 的 `validateAuthorizationResponseIssuer()` 把「声明支持 + 回调缺失」直接当作授权服务器混同攻击并抛 `IssuerMismatchError`，于是浏览器页面上授权已经成功、插件侧却报 `Issuer mismatch in authorization response (RFC 9207): expected "https://mcp.notion.com", received undefined`，在服务端修好元数据之前无法绕过。修复包含两点（`lib/oauth.js`）：① 回调 URL 里的 `iss` 现在会原样交给 `exchangeAuthorization()`——此前它被**丢弃**，SDK 只能拿到 `undefined`，于是反过来两头都错：「声明支持 `iss` 且确实回了正确 `iss` 的服务器」照样被判失败，「没声明支持、却带回错误 `iss` 的混同响应」反倒被静默放行；② 只有当回调**确实没带** `iss`、而元数据又声明支持时，才把这一条声明从交给令牌交换的元数据**副本**上去掉，并打一条 warning 日志（RFC 9207 中 `iss` 本就是可选参数，缺失本身不是攻击信号，声明只是与本次响应不符）。带着 `iss` 的回调仍走 SDK 的严格字符串比对，`iss` 与 `metadata.issuer` 不一致照样抛错；设置页 / tool-auth 的回调监听器与「无 serverUrl」的旧版兜底监听器两条路径都已修正
+
+### 说明
+
+- 新增 3 个回归用例到 `test/oauth-flow.test.mjs`（该文件依赖 DSH 模块闭包，只在本地装有 DSH 的环境执行）：① 声明支持但回调不带 `iss` → 授权成功（#18 的复现，修复前失败）；② 回调带正确的 `iss` → 授权成功（修复前同样失败：`iss` 被丢弃后校验看到的是 `undefined`）；③ 回调带错误的 `iss` → 仍然拒绝并报 `Issuer mismatch`，且不落任何 token
+- 本次只改宿主侧 `lib/oauth.js`：客户端包 `lib/client.js` 与所有 Remote 接口未变，升级后无需重新构建产物
+
 ## [1.14.2] - 2026-10-29
 
 - **支持版本**：**dsh `0.2.0-rc.2`**

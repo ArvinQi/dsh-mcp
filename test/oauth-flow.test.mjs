@@ -35,8 +35,11 @@ async function readJson(request) {
 /**
  * A fake OAuth-protected MCP server: metadata discovery, dynamic client
  * registration, token exchange, and a `/mcp` endpoint that always challenges.
+ * @param options.issParameterSupported - advertise RFC 9207 `iss` support in
+ *   the authorization-server metadata (some servers, Notion among them,
+ *   advertise it and then never send `iss`; see issue #18).
  */
-async function startFakeOAuthServer() {
+async function startFakeOAuthServer({ issParameterSupported = false } = {}) {
 	const calls = [];
 	const server = createServer((request, response) => {
 		const base = `http://127.0.0.1:${server.address().port}`;
@@ -64,6 +67,7 @@ async function startFakeOAuthServer() {
 				code_challenge_methods_supported: ["S256"],
 				grant_types_supported: ["authorization_code", "refresh_token"],
 				token_endpoint_auth_methods_supported: ["none"],
+				...(issParameterSupported ? { authorization_response_iss_parameter_supported: true } : {}),
 			});
 			return;
 		}
@@ -165,10 +169,15 @@ function oauthRow(serverName, base, overrides = {}) {
 	};
 }
 
-/** Complete a running flow the way a browser would: hit the loopback callback with a code. */
-async function completeAuthorization(authorizationUrl, code) {
+/**
+ * Complete a running flow the way a browser would: hit the loopback callback
+ * with a code (and, when given, the RFC 9207 `iss` the server decided to send).
+ */
+async function completeAuthorization(authorizationUrl, code, { iss } = {}) {
 	const redirect = new URL(new URL(authorizationUrl).searchParams.get("redirect_uri"));
-	const response = await fetch(`${redirect.origin}${redirect.pathname}?code=${code}`);
+	const query = new URLSearchParams({ code });
+	if (iss !== undefined) query.set("iss", iss);
+	const response = await fetch(`${redirect.origin}${redirect.pathname}?${query}`);
 	assert.equal(response.status, 200, "the loopback callback answers the authorization page");
 }
 
@@ -329,6 +338,89 @@ test("a mount waiting for authorization reads as oauthRequired, not as a failure
 			await delay(25);
 		}
 		assert.equal(view?.oauthAuthorized, true, "stored tokens mark the server authorized");
+	} finally {
+		await context.cleanup();
+		await oauth.close();
+	}
+});
+
+/**
+ * Credential refs holding OAuth *tokens*. The client registration lives under a
+ * different ref (`…_OAUTH_CLIENT_…`), so a flow that registers successfully but
+ * never redeems its code still has no token here.
+ */
+function tokenRefs(secrets) {
+	return [...secrets.keys()]
+		.map((ref) => String(ref))
+		.filter((ref) => ref.startsWith("DSH_MCP_OAUTH_") && !ref.startsWith("DSH_MCP_OAUTH_CLIENT_"));
+}
+
+/*
+ * RFC 9207 `iss` in the authorization response (issue #18).
+ *
+ * The MCP SDK rejects a callback without `iss` when the authorization-server
+ * metadata advertises `authorization_response_iss_parameter_supported: true`,
+ * reading that combination as an authorization-server mix-up attack. Servers
+ * exist that advertise the parameter and then never send it (Notion's
+ * `https://mcp.notion.com`), which turned every completed authorization into
+ * "Issuer mismatch in authorization response (RFC 9207) … received undefined".
+ * A response that *does* carry `iss` must still be compared strictly, so the
+ * mix-up protection is only relaxed for the case that cannot use it.
+ */
+
+test("a server that advertises RFC 9207 iss support but sends none still authorizes (#18)", async () => {
+	const oauth = await startFakeOAuthServer({ issParameterSupported: true });
+	const context = await bootManager();
+	try {
+		const started = await context.service.oauthStart({ serverName: "notionsrv", url: `${oauth.base}/mcp` });
+		assert.equal(started.ok, true, started.ok ? "" : started.error.message);
+
+		// Notion's real callback: an authorization code and no `iss`.
+		await completeAuthorization(started.url, "notion-code");
+
+		const authorized = await waitForAuthorized(context.service, "notionsrv");
+		assert.equal(authorized.authorized, true, "the inaccurate advertisement must not fail a completed authorization");
+		assert.equal(authorized.error, undefined, "no failure is reported to the settings page");
+		assert.equal(tokenRefs(context.secrets).length, 1, "the exchanged tokens are stored");
+	} finally {
+		await context.cleanup();
+		await oauth.close();
+	}
+});
+
+test("a callback carrying the discovered issuer still authorizes", async () => {
+	const oauth = await startFakeOAuthServer({ issParameterSupported: true });
+	const context = await bootManager();
+	try {
+		const started = await context.service.oauthStart({ serverName: "isssrv", url: `${oauth.base}/mcp` });
+		assert.equal(started.ok, true, started.ok ? "" : started.error.message);
+		await completeAuthorization(started.url, "iss-code", { iss: oauth.base });
+		const authorized = await waitForAuthorized(context.service, "isssrv");
+		assert.equal(authorized.authorized, true, "a matching iss passes the SDK's strict comparison");
+	} finally {
+		await context.cleanup();
+		await oauth.close();
+	}
+});
+
+test("a callback whose iss names another issuer is still rejected (RFC 9207 mix-up)", async () => {
+	const oauth = await startFakeOAuthServer({ issParameterSupported: true });
+	const context = await bootManager();
+	try {
+		const started = await context.service.oauthStart({ serverName: "mixupsrv", url: `${oauth.base}/mcp` });
+		assert.equal(started.ok, true, started.ok ? "" : started.error.message);
+
+		// Mix-up shape: a code minted here, an issuer naming a different server.
+		await completeAuthorization(started.url, "attacker-code", { iss: "https://evil.example" });
+
+		let status = await context.service.oauthStatus({ serverName: "mixupsrv" });
+		for (let i = 0; i < 100 && status.pending; i += 1) {
+			await delay(25);
+			status = await context.service.oauthStatus({ serverName: "mixupsrv" });
+		}
+		assert.equal(status.authorized, false, "a mismatching issuer is not authorized");
+		assert.match(status.error ?? "", /Issuer mismatch/, "the reported reason names the RFC 9207 failure");
+		assert.equal(tokenRefs(context.secrets).length, 0, "the rejected code is never redeemed into tokens");
 	} finally {
 		await context.cleanup();
 		await oauth.close();

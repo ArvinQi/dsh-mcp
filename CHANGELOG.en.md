@@ -12,6 +12,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Supported DSH version**: **dsh `0.2.0-rc.2`** — the latest release is developed and verified on `0.2.0-rc.2` (declared in `package.json` → `dsh.supported`); older entries state the version verified at their time. When the DSH and plugin versions do not match, the Settings page reports a diagnosis (check whether the bundle is selected → restart `dsh web` → hard-refresh → upgrade both sides).
 - **Release convention**: every version entry states `- **Supported DSH version**: dsh <version>`, mirrored in the GitHub Release notes. The release body is written in **Chinese** (matching [CHANGELOG.md](CHANGELOG.md)), with heading levels mirroring the entry.
 
+## [Unreleased]
+
+- **Supported DSH version**: **dsh `0.2.0-rc.2`**
+
+### Fixed
+
+- **Authorization fails after the browser already reports success when the authorization server advertises RFC 9207 `iss` support but never sends `iss` ([#18](https://github.com/ArvinQi/dsh-mcp/issues/18))**: Notion's authorization-server metadata (`https://mcp.notion.com/.well-known/oauth-authorization-server`) says `authorization_response_iss_parameter_supported: true`, yet its real callback URL carries **no** `iss` parameter. MCP SDK 2.0.0's `validateAuthorizationResponseIssuer()` reads "advertised + absent" as an authorization-server mix-up attack and throws `IssuerMismatchError`, so the browser shows a successful authorization while the plugin reports `Issuer mismatch in authorization response (RFC 9207): expected "https://mcp.notion.com", received undefined` — with no way around it until the server fixes its metadata. Two changes in `lib/oauth.js`: (1) the `iss` from the callback URL is now handed to `exchangeAuthorization()` as-is — it used to be **dropped**, so the SDK only ever saw `undefined` and that was wrong in both directions: a server that advertises support *and* sends the correct `iss` was also rejected, while a **mix-up response carrying a wrong `iss` from a non-advertising server was silently accepted**; (2) only when the callback really carries no `iss` and the metadata claims support is that one claim removed (from a copy, so registration/authorization-URL construction see the original) before the token exchange, with one warning logged — RFC 9207 makes `iss` OPTIONAL, so an absent value is not by itself an attack signal, the advertisement is simply inaccurate for this response. A callback that does carry `iss` still goes through the SDK's strict string comparison and still throws on a mismatch. Both the settings-page / tool-auth callback listener and the legacy no-`serverUrl` fallback listener are fixed
+
+### Notes
+
+- Three regression cases added to `test/oauth-flow.test.mjs` (that file needs the DSH module closure, so it runs only where a DSH installation is present): (1) advertises support but sends no `iss` → authorizes (the #18 reproduction, which failed before the fix); (2) callback with the correct `iss` → authorizes (also failed before the fix: with the parameter dropped, validation saw `undefined`); (3) callback with a wrong `iss` → still rejected with `Issuer mismatch` and no tokens stored
+- Host-side `lib/oauth.js` only: the client bundle `lib/client.js` and every Remote interface are untouched, so no rebuild is needed after upgrading
+
 ## [1.14.2] - 2026-10-29
 
 - **Supported DSH version**: **dsh `0.2.0-rc.2`**

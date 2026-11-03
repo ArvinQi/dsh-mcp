@@ -23,7 +23,7 @@
 - **Image result passthrough**: images returned by MCP tools (screenshots/charts) are projected through the attachment service into model image context, with strict preflight and bounded fallbacks (PR #4)
 - **Two injection modes**: `search` (on-demand, token-saving) and `full` (inject everything)
 - **Zero npm dependencies**: plugs into DeepSeek Harness internals, install and go
-- **OAuth authentication**: for `streamable-http` servers using MCP OAuth (authorization-code + PKCE), the server card has an **Authorize** button and the **Host opens the system browser** for the login; the page then polls the authorization status every 5 seconds. Tokens and OAuth client info are persisted and refreshed automatically by the SDK (auto-renewed while active within 24h), with re-authorization after expiry. **Before you authorize it only says "authorizing"; a real failure reports its reason**
+- **OAuth authentication**: for `streamable-http` servers using MCP OAuth (authorization-code + PKCE), the server card has an **Authorize** button and the **Host opens the system browser** for the login; the page then polls the authorization status every 5 seconds. Tokens and OAuth client info are persisted in the credentials document; when the access token expires the SDK **renews it silently** with the stored refresh token (no interruption, no browser), and only a revoked/expired refresh token needs re-authorization. **Before you authorize it only says "authorizing"; a real failure reports its reason**
 - **HTTPS verified against the system trust store by default**: intranet/corporate CAs (roots installed in the OS keychain) no longer need `NODE_OPTIONS=--use-system-ca` on `dsh web`; the plugin merges the OS store into Node's default root store at startup
 - **Three install paths**: npm / GitHub git source / local link; bilingual UI and docs
 
@@ -325,9 +325,11 @@ Check in order:
 - On success the button disappears and the tools appear; a failure reports its reason (e.g.
   "authorization failed: access_denied"), and an expired callback says "authorization did not complete
   (retry)". Nothing is reported as failed before you authorize.
-- Tokens and the registered OAuth client are persisted in the credentials document (scoped by `serverName`)
-  and refreshed automatically by the MCP SDK (auto-renewed while active within 24h); after authorizing once,
-  mounts and later test connections reuse the same token, and an expired token triggers a fresh
+- Tokens and the registered OAuth client are persisted in the credentials document (scoped by `serverName`).
+  When the access token (typically ~1h) expires, the SDK **refreshes it silently with the stored refresh
+  token and retries the request** — no re-authorization; only a revoked/expired refresh token, or a server
+  that issues none, falls back to authorizing again. After authorizing once, mounts and later test
+  connections reuse the same token, and an unrefreshable expired token triggers a fresh
   authorization automatically.
 - A server that is already live and serving tools (its static token is enough) is not flagged red; the red
   badge/button is reserved for servers the missing authorization actually blocks.

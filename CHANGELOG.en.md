@@ -12,6 +12,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Supported DSH version**: **dsh `0.2.0-rc.2`** — the latest release is developed and verified on `0.2.0-rc.2` (declared in `package.json` → `dsh.supported`); older entries state the version verified at their time. When the DSH and plugin versions do not match, the Settings page reports a diagnosis (check whether the bundle is selected → restart `dsh web` → hard-refresh → upgrade both sides).
 - **Release convention**: every version entry states `- **Supported DSH version**: dsh <version>`, mirrored in the GitHub Release notes. The release body is written in **Chinese** (matching [CHANGELOG.md](CHANGELOG.md)), with heading levels mirroring the entry.
 
+## [Unreleased]
+
+- **Supported DSH version**: **dsh `0.2.0-rc.2`**
+
+### Fixed
+
+- **OAuth authorization died every hour and always asked to re-authorize (the provider wiped credentials when the access token expired)**: as soon as the access token's JWT `exp` had passed, `tokens()` deleted the whole credential — including a still-valid refresh token — and reported "no token", so the MCP SDK could never reach `refreshAuthorization` and always fell back to authorizing again; the tool-call guard in `lib/mcp-client.js` treated an expired access token as "needs authorization" too. Net effect: once a ~1h access token expired, a mount or tool call reopened the browser or demanded re-authorization, even though the server had handed out a perfectly usable refresh token. Now `tokens()` returns the stored credential whenever a refresh token exists, which lets the SDK's "401 → silent refresh → one retry" path run; only an expired credential **without** a refresh token is cleared for a fresh authorization. The same change keeps `oauthTokenStatus` (the settings-page state) reporting "authorized" while only the refresh token is left, instead of dropping back to "not authorized" every hour. A revoked/expired refresh token still goes through the SDK's `InvalidGrant` branch (clear + re-authorize), unchanged. The README's never-quite-true "auto-renewed while active within 24h" claim is corrected as well
+
+### Notes
+
+- New `test/oauth-refresh.test.mjs` (needs the DSH module closure, so it runs only where a DSH installation is present): the fake authorization server supports the `refresh_token` grant and covers (1) expired access token + refresh token → silent refresh (exactly one `grant_type=refresh_token` request, no interactive authorization, refreshed tokens persisted with a future expiry), (2) expired without a refresh token → cleared and re-authorization required, (3) `oauthTokenStatus` still reporting authorized with only a refresh token. All three failed before the fix (the old code also really bound a loopback listener in the test, so the regression test now intercepts the redirect to fail fast)
+- Host side only (`lib/oauth.js`, `lib/mcp-client.js`, docs): the client bundle `lib/client.js` and every Remote interface are untouched, so no rebuild is needed after upgrading
+
 ## [1.14.3] - 2026-10-31
 
 - **Supported DSH version**: **dsh `0.2.0-rc.2`**

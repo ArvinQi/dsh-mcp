@@ -25,7 +25,7 @@
 - **图片结果透传**：MCP 工具返回的图片（截图/图表等）经附件服务投影为图片引用进入模型上下文，带严格预检与有界降级文案（PR #4）
 - **双注入模式**：`search`（按需检索，省 token）与 `full`（全量注入）
 - **零 npm 依赖**：直接对接 DeepSeek Harness 内部能力，安装即用
-- **OAuth 认证支持**：`streamable-http` 服务器若走 MCP OAuth（授权码 + PKCE），服务器卡片点「OAuth 授权」按钮，**由宿主打开系统浏览器**完成授权，本页每 5 秒轮询授权状态；token 与 client 信息持久化、由 SDK 自动刷新（24 小时内活跃自动续期），失效后重新授权。**授权完成前只显示「授权中」，授权失败会写明原因**
+- **OAuth 认证支持**：`streamable-http` 服务器若走 MCP OAuth（授权码 + PKCE），服务器卡片点「OAuth 授权」按钮，**由宿主打开系统浏览器**完成授权，本页每 5 秒轮询授权状态；token 与 client 信息持久化在凭据文档；access token 过期后由 SDK 用存储的 refresh token **静默续期**（不会打断使用、也不会再弹浏览器），只有 refresh token 也被吊销/过期时才需要重新授权。**授权完成前只显示「授权中」，授权失败会写明原因**
 - **HTTPS 默认按系统证书校验**：内网/公司 CA（只装在系统钥匙串里的根证书）无需再给 `dsh web` 加 `NODE_OPTIONS=--use-system-ca`，插件启动时把系统信任库并入 Node 默认根证书库
 - **三种安装方式**：npm / GitHub git 源 / 本地 link；中英文界面与文档
 
@@ -305,8 +305,9 @@ dsh plugin --profile web add link:<本仓库绝对路径>
   行上显示「授权中…」并**每 5 秒检查一次授权状态**；浏览器没起来时可以点行内的手动链接
 - 授权成功后按钮消失、工具出现；失败会写明原因（如「授权失败: access_denied」），
   回调消失则显示「授权未完成（可重试）」——授权完成前不会报失败
-- token 与 OAuth client 信息持久化在凭据文档（按 `serverName` 隔离），由 MCP SDK 自动刷新
-  （24 小时内活跃自动续期）；失效后重新授权，授权一次后挂载与测试复用
+- token 与 OAuth client 信息持久化在凭据文档（按 `serverName` 隔离）；access token（通常约 1 小时）
+  过期时，SDK 用存储的 refresh token **静默刷新并重试原请求**，不需要重新授权——只有 refresh token
+  被吊销/过期，或服务端根本没发 refresh token 时，才会回到「重新授权」这一步；授权一次后挂载与测试复用
 - 已经 `live` 且有工具的服务器（静态 token 够用）不会被打上红色「未授权」，只保留一个普通授权按钮；
   红色徽标/红色按钮只用于授权确实卡住挂载的服务器
 - 第一次挂载（`allowBrowserOnMount`，默认开）仍可能自动弹一次浏览器；把 profile 的

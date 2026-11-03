@@ -12,6 +12,19 @@
 - **支持版本**：**dsh `0.2.0-rc.2`** —— 最新版本在 `0.2.0-rc.2` 上开发与验证（`package.json` → `dsh.supported` 同步声明）；历史版本条目各自声明当时验证的版本。DSH 与插件版本不匹配时，设置页会给出排查诊断（核对 bundle 是否已选中 → 重启 `dsh web` → 硬刷新 → 同步升级）。
 - **发版约定**：每个版本条目都要声明 `- **支持版本**：dsh <版本>`，并在 GitHub Release notes 中同步。Release 正文用**中文**（与本文档一致），标题层级与条目一致。
 
+## [Unreleased]
+
+- **支持版本**：**dsh `0.2.0-rc.2`**
+
+### 修复
+
+- **OAuth 授权每小时失效、每次都要重新授权（provider 在 access token 过期时提前清库）**：`tokens()` 一发现 access token 的 JWT `exp` 已过，就把整份凭据——包括仍然有效的 refresh token——从凭据文档里删掉并返回「没有 token」，于是 MCP SDK 永远走不到 `refreshAuthorization`，只会走「重新授权」；工具调用侧 `lib/mcp-client.js` 的守卫同样把「access token 过期」直接当成需要授权。结果是：约 1 小时有效期的 access token 一到点，挂载 / 工具调用就重新弹浏览器或提示「需要授权」，而服务端其实一直发着可用的 refresh token。现在：只要还有 refresh token，`tokens()` 就原样交回凭据，让 SDK 的「401 → 静默刷新 → 重试一次」链路生效；只有「已过期且没有 refresh token」才清库、要求重新授权。同处修正让 `oauthTokenStatus`（设置页状态）在仅剩 refresh token 时仍报告已授权，不再每小时退回「未授权」。refresh token 被吊销或过期时，SDK 的 `InvalidGrant` 分支照旧清凭据并重新授权，行为不变。顺带修正 README 里「24 小时内活跃自动续期」这句从未真正成立的描述
+
+### 说明
+
+- 新增 `test/oauth-refresh.test.mjs`（依赖 DSH 模块闭包，仅在装有 DSH 的环境执行）：假授权服务器支持 `refresh_token` 授权，覆盖 ① access token 过期 + 有 refresh token → SDK 静默刷新（只发一次 `grant_type=refresh_token`、不进入交互式授权、新 token 落库且过期时间在未来）；② 过期且没有 refresh token → 清库并要求重新授权；③ `oauthTokenStatus` 对「仅剩 refresh token」仍报已授权。修复前这三个用例全部失败（且旧实现会在测试里真的去开回环监听，现已用重定向拦截让回归快速失败）
+- 只改宿主侧 `lib/oauth.js`、`lib/mcp-client.js` 与文档：客户端包 `lib/client.js` 与所有 Remote 接口未变，升级后无需重新构建产物
+
 ## [1.14.3] - 2026-10-31
 
 - **支持版本**：**dsh `0.2.0-rc.2`**

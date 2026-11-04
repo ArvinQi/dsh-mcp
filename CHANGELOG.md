@@ -12,6 +12,20 @@
 - **支持版本**：**dsh `0.2.0-rc.2`** —— 最新版本在 `0.2.0-rc.2` 上开发与验证（`package.json` → `dsh.supported` 同步声明）；历史版本条目各自声明当时验证的版本。DSH 与插件版本不匹配时，设置页会给出排查诊断（核对 bundle 是否已选中 → 重启 `dsh web` → 硬刷新 → 同步升级）。
 - **发版约定**：每个版本条目都要声明 `- **支持版本**：dsh <版本>`，并在 GitHub Release notes 中同步。Release 正文用**中文**（与本文档一致），标题层级与条目一致。
 
+## [Unreleased]
+
+- **支持版本**：**dsh `0.2.0-rc.2`**（`0.2.2-rc.1` 已可运行，但按下面的说明降级）
+
+### 修复
+
+- **在 DSH `0.2.2-rc.1` 上每一轮都失败为 `assembly.tools is not iterable`（插件在第一次模型调用之前就崩了）**：DSH `0.2.1-rc.2` 起，`system-prompt/assemble` 只传 `sections` / `contexts` / `variables`（`PromptPresentation`），**不再传工具数组**——条件工具改为在注册阶段逐步准入，监听器返回的 `tools` 也会被忽略——而钩子仍在 `for (const tool of assembly.tools)` 上遍历 `undefined`，于是每一轮都报「This turn failed: assembly.tools is not iterable」。过滤 / 排序逻辑现在抽到 `lib/tool-control.js`，宿主不传工具数组时返回 `false`：钩子跳过这段工作、只记一条 warning，本轮照常继续。在 `0.2.2-rc.1` 上的代价是：MCP 工具仍然注册且可调用，但按工具开关、search 模式注入（只注入常驻 + 热注入集）和 MCP 工具的固定排序不再生效；`0.2.0-rc.2` 上行为与之前完全一致
+
+### 说明
+
+- 新增 `test/tool-control.test.mjs`（不依赖 DSH 模块闭包，CI 可跑）：覆盖新宿主「没有 tools 数组」时返回 `false` 且不改写 assembly（该用例在旧代码上会抛错）、`tools` 缺失或非数组时的兜底、full 模式下的开关过滤与稳定排序、search 模式下的热注入集与控制段落（去重、替换而非追加、服务器名排序）
+- 只改宿主侧 `lib/index.js`（外加新模块 `lib/tool-control.js`）：客户端 bundle `lib/client.js` 与所有 Remote 接口未动，无需重新构建
+- `package.json` 的 `dsh.supported` 仍为 `0.2.0-rc.2`：是否改成范围（例如 `>=0.2.0-rc.2`）、是否把降级行为写进设置页诊断，留给维护者决定
+
 ## [1.14.4] - 2026-11-03
 
 - **支持版本**：**dsh `0.2.0-rc.2`**

@@ -12,6 +12,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Supported DSH version**: **dsh `0.2.0-rc.2`** — the latest release is developed and verified on `0.2.0-rc.2` (declared in `package.json` → `dsh.supported`); older entries state the version verified at their time. When the DSH and plugin versions do not match, the Settings page reports a diagnosis (check whether the bundle is selected → restart `dsh web` → hard-refresh → upgrade both sides).
 - **Release convention**: every version entry states `- **Supported DSH version**: dsh <version>`, mirrored in the GitHub Release notes. The release body is written in **Chinese** (matching [CHANGELOG.md](CHANGELOG.md)), with heading levels mirroring the entry.
 
+## [Unreleased]
+
+- **Supported DSH version**: **dsh `0.2.0-rc.2`** (`0.2.2-rc.1` now runs, with the degradation described below)
+
+### Fixed
+
+- **Every turn failed with `assembly.tools is not iterable` on DSH `0.2.2-rc.1` (the plugin died before the first model call)**: since DSH `0.2.1-rc.2`, `system-prompt/assemble` receives sections, contexts and variables (`PromptPresentation`) but **no tool array** — conditional tools are admitted per step at registration time and a returned `tools` array is ignored — while the hook still ran `for (const tool of assembly.tools)` over `undefined`, so every turn failed with "This turn failed: assembly.tools is not iterable". The filtering/ordering logic now lives in `lib/tool-control.js` and returns `false` when the host passes no tool array: the hook skips that work, logs one warning, and lets the turn run. The cost on `0.2.2-rc.1` is that MCP tools stay registered and callable, but the per-tool switches, search-mode injection (resident + hot set only) and the canonical MCP tool order no longer apply; on `0.2.0-rc.2` behaviour is unchanged
+
+### Notes
+
+- New `test/tool-control.test.mjs` (needs no DSH module closure, so CI runs it): covers the new host returning `false` and leaving a tool-less assembly untouched (that case threw before the fix), the missing/non-array `tools` fallback, full-mode switch filtering with the stable order, and search-mode hot-set injection plus the control section (de-duplicated, replaced rather than appended, servers sorted)
+- Host side only (`lib/index.js`, plus the new `lib/tool-control.js`): the client bundle `lib/client.js` and every Remote interface are untouched, so no rebuild is needed after upgrading
+- `package.json` → `dsh.supported` still declares `0.2.0-rc.2`; whether to widen it to a range (e.g. `>=0.2.0-rc.2`) and to surface the degraded mode in the Settings diagnosis is left to the maintainer
+
 ## [1.14.4] - 2026-11-03
 
 - **Supported DSH version**: **dsh `0.2.0-rc.2`**

@@ -101,7 +101,7 @@ function cssModuleLoader() {
           [...selectorText.matchAll(/\.([A-Za-z_][A-Za-z0-9_-]*)/g)].map((match) => match[1]),
         )]
         const map = Object.fromEntries(classes.map((name) => [name, name]))
-        const file = args.path.split('/').pop()
+        const file = args.path.split(/[/\\]/).pop()
         const contents = [
           `(function () {`,
           `  if (typeof document !== 'undefined') {`,

@@ -26,9 +26,16 @@ interface McpManagerRemote {
   upsert(request: {
     readonly id?: McpServerId
     readonly server: unknown
-    readonly env: readonly unknown[]
-  }): Promise<McpRemoteResult<{ readonly server: McpServerView }>>
-  delete(request: { readonly id: McpServerId }): Promise<McpRemoteResult<unknown>>
+    readonly env?: readonly unknown[]
+  }): Promise<McpRemoteResult<{
+    readonly ok: boolean
+    readonly server?: McpServerView
+    readonly error?: { readonly code: string; readonly message: string }
+  }>>
+  delete(request: { readonly id: McpServerId }): Promise<McpRemoteResult<{
+    readonly ok: boolean
+    readonly error?: { readonly code: string; readonly message: string }
+  }>>
   upsertJson(request: { readonly servers: readonly unknown[] }): Promise<McpRemoteResult<{
     readonly added: number
     readonly updated: number
@@ -138,17 +145,29 @@ export async function apply(ctx: Context): Promise<void> {
     },
     save: async (draft) => {
       const submission = draftToSubmission(draft)
-      const result = await manager.upsert({
-        ...draft.id === null ? {} : { id: draft.id },
-        server: submission.server,
-      })
-      if (result.ok) return null
-      return failureOf(result.error)
+      try {
+        const raw = await manager.upsert({
+          ...draft.id === null ? {} : { id: draft.id },
+          server: submission.server,
+        }) as any
+        const res = (raw && typeof raw === 'object' && 'value' in raw && raw.value !== undefined) ? raw.value : raw
+        if (res?.ok) return null
+        const err = res?.error ?? raw?.error
+        return failureOf(err ?? { code: 'MCP_SAVE_FAILED', message: res?.message || 'save failed' })
+      } catch (error) {
+        return { code: 'MCP_SAVE_FAILED', message: error instanceof Error ? error.message : String(error) }
+      }
     },
     remove: async (id) => {
-      const result = await manager.delete({ id })
-      if (result.ok) return null
-      return failureOf(result.error)
+      try {
+        const raw = await manager.delete({ id }) as any
+        const res = (raw && typeof raw === 'object' && 'value' in raw && raw.value !== undefined) ? raw.value : raw
+        if (res?.ok) return null
+        const err = res?.error ?? raw?.error
+        return failureOf(err ?? { code: 'MCP_DELETE_FAILED', message: res?.message || 'delete failed' })
+      } catch (error) {
+        return { code: 'MCP_DELETE_FAILED', message: error instanceof Error ? error.message : String(error) }
+      }
     },
     upsertJson: async (servers) => {
       const result = await unwrap(() => manager.upsertJson({ servers }))

@@ -203,13 +203,17 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
 
   const refreshServer = (serverName: string): void => {
     setRefreshing(prev => new Set(prev).add(serverName))
+    const target = serverName ? state.servers.find(s => s.serverName === serverName) : undefined
+    const probePromise = target ? test(viewToDraft(target)).catch(() => null) : Promise.resolve(null)
     void Promise.all([
+      probePromise,
       list().then(
         (servers) => { setServers(servers); setLoadState('ready'); setHostMissing(false) },
         () => {},
       ),
       props.toolsList().then(setTools, () => {}),
     ]).finally(() => {
+      void props.toolsList().then(setTools, () => {})
       setRefreshing(prev => {
         const next = new Set(prev)
         next.delete(serverName)

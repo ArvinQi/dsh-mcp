@@ -125,7 +125,23 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
   const submit = async (): Promise<void> => {
     setSaveError(null)
     actions.setBusy('save')
+    actions.setTestRunning(true)
     try {
+      // 1. First trigger test connection
+      const outcome = await injected.test(draft)
+      actions.setTest(outcome)
+      actions.setTestRunning(false)
+
+      if (outcome.probe.ok === false) {
+        if (outcome.probe.oauthRequired === true) {
+          setOauthPhase('waiting')
+        } else {
+          setSaveError(`${t('testFail')}: ${outcome.probe.message}`)
+          return
+        }
+      }
+
+      // 2. Test passed or OAuth pending: proceed to save!
       const failure = await injected.save(draft)
       if (failure !== null) {
         setSaveError(`${failure.code}: ${failure.message}`)
@@ -139,6 +155,7 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
       setSaveError(errorText(error))
     } finally {
       actions.setBusy(null)
+      actions.setTestRunning(false)
     }
   }
 
@@ -176,7 +193,7 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
   const stdio = draft.transport === 'stdio'
   const probe = test?.probe
   return (
-    <form className={css.form} onSubmit={(event) => { event.preventDefault(); void submit() }}>
+    <form className={css.form} noValidate onSubmit={(event) => { event.preventDefault(); void submit() }}>
       <div className={css.titleRow}>
         <h3 className={css.title}>{draft.id === null ? t('newTitle') : t('editTitle')}</h3>
         <div className={css.titleActions}>
@@ -348,8 +365,13 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
         <button type="button" className={controls.button} disabled={testRunning || busy !== null} onClick={() => void runTest()}>
           {testRunning ? t('testRunning') : t('test')}
         </button>
-        <button type="submit" className={`${controls.button} ${controls.primary}`} disabled={busy !== null || testRunning}>
-          {busy === 'save' ? t('saving') : t('save')}
+        <button
+          type="button"
+          className={`${controls.button} ${controls.primary}`}
+          disabled={busy !== null || testRunning}
+          onClick={() => void submit()}
+        >
+          {busy === 'save' || testRunning ? t('saving') : t('save')}
         </button>
         <button type="button" className={controls.button} disabled={busy !== null} onClick={() => actions.cancelEdit()}>{t('cancel')}</button>
       </div>

@@ -145,21 +145,29 @@ export async function apply(ctx: Context): Promise<void> {
     },
     save: async (draft) => {
       const submission = draftToSubmission(draft)
-      const carrier = await manager.upsert({
-        ...draft.id === null ? {} : { id: draft.id },
-        server: submission.server,
-      })
-      if (!carrier.ok) return failureOf(carrier.error)
-      const result = carrier.value
-      if (result.ok) return null
-      return failureOf(result.error ?? { code: 'MCP_SAVE_FAILED', message: 'save failed' })
+      try {
+        const raw = await manager.upsert({
+          ...draft.id === null ? {} : { id: draft.id },
+          server: submission.server,
+        }) as any
+        const res = (raw && typeof raw === 'object' && 'value' in raw && raw.value !== undefined) ? raw.value : raw
+        if (res?.ok) return null
+        const err = res?.error ?? raw?.error
+        return failureOf(err ?? { code: 'MCP_SAVE_FAILED', message: res?.message || 'save failed' })
+      } catch (error) {
+        return { code: 'MCP_SAVE_FAILED', message: error instanceof Error ? error.message : String(error) }
+      }
     },
     remove: async (id) => {
-      const carrier = await manager.delete({ id })
-      if (!carrier.ok) return failureOf(carrier.error)
-      const result = carrier.value
-      if (result.ok) return null
-      return failureOf(result.error ?? { code: 'MCP_DELETE_FAILED', message: 'delete failed' })
+      try {
+        const raw = await manager.delete({ id }) as any
+        const res = (raw && typeof raw === 'object' && 'value' in raw && raw.value !== undefined) ? raw.value : raw
+        if (res?.ok) return null
+        const err = res?.error ?? raw?.error
+        return failureOf(err ?? { code: 'MCP_DELETE_FAILED', message: res?.message || 'delete failed' })
+      } catch (error) {
+        return { code: 'MCP_DELETE_FAILED', message: error instanceof Error ? error.message : String(error) }
+      }
     },
     upsertJson: async (servers) => {
       const result = await unwrap(() => manager.upsertJson({ servers }))

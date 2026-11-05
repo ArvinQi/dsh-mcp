@@ -26,9 +26,16 @@ interface McpManagerRemote {
   upsert(request: {
     readonly id?: McpServerId
     readonly server: unknown
-    readonly env: readonly unknown[]
-  }): Promise<McpRemoteResult<{ readonly server: McpServerView }>>
-  delete(request: { readonly id: McpServerId }): Promise<McpRemoteResult<unknown>>
+    readonly env?: readonly unknown[]
+  }): Promise<McpRemoteResult<{
+    readonly ok: boolean
+    readonly server?: McpServerView
+    readonly error?: { readonly code: string; readonly message: string }
+  }>>
+  delete(request: { readonly id: McpServerId }): Promise<McpRemoteResult<{
+    readonly ok: boolean
+    readonly error?: { readonly code: string; readonly message: string }
+  }>>
   upsertJson(request: { readonly servers: readonly unknown[] }): Promise<McpRemoteResult<{
     readonly added: number
     readonly updated: number
@@ -138,17 +145,21 @@ export async function apply(ctx: Context): Promise<void> {
     },
     save: async (draft) => {
       const submission = draftToSubmission(draft)
-      const result = await manager.upsert({
+      const carrier = await manager.upsert({
         ...draft.id === null ? {} : { id: draft.id },
         server: submission.server,
       })
+      if (!carrier.ok) return failureOf(carrier.error)
+      const result = carrier.value
       if (result.ok) return null
-      return failureOf(result.error)
+      return failureOf(result.error ?? { code: 'MCP_SAVE_FAILED', message: 'save failed' })
     },
     remove: async (id) => {
-      const result = await manager.delete({ id })
+      const carrier = await manager.delete({ id })
+      if (!carrier.ok) return failureOf(carrier.error)
+      const result = carrier.value
       if (result.ok) return null
-      return failureOf(result.error)
+      return failureOf(result.error ?? { code: 'MCP_DELETE_FAILED', message: 'delete failed' })
     },
     upsertJson: async (servers) => {
       const result = await unwrap(() => manager.upsertJson({ servers }))

@@ -446,9 +446,11 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
           // Mounting is asynchronous: refresh again after the connection
           // settles so the badge and tool count reflect the live state without
           // a manual refresh (mirrors the enable-toggle path).
-          const serverName = state.draft.serverName
-          timersRef.current.push(window.setTimeout(() => refreshServer(serverName), 2000))
-          timersRef.current.push(window.setTimeout(() => refreshServer(serverName), 6000))
+          const serverName = state.draft?.serverName ?? ''
+          if (serverName) {
+            timersRef.current.push(window.setTimeout(() => refreshServer(serverName), 2000))
+            timersRef.current.push(window.setTimeout(() => refreshServer(serverName), 6000))
+          }
         }}
       />
     )

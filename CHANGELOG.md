@@ -12,18 +12,24 @@
 - **支持版本**：**dsh `0.2.0-rc.2`** —— 最新版本在 `0.2.0-rc.2` 上开发与验证（`package.json` → `dsh.supported` 同步声明）；历史版本条目各自声明当时验证的版本。DSH 与插件版本不匹配时，设置页会给出排查诊断（核对 bundle 是否已选中 → 重启 `dsh web` → 硬刷新 → 同步升级）。
 - **发版约定**：每个版本条目都要声明 `- **支持版本**：dsh <版本>`，并在 GitHub Release notes 中同步。Release 正文用**中文**（与本文档一致），标题层级与条目一致。
 
-## [未发布]
+## [1.15.0] - 2026-11-06
 
-- **支持版本**：**dsh `0.2.0-rc.2`**（本修复同时让插件可在 `0.2.2-rc.1` 上加载，见下）
+- **支持版本**：**dsh `0.2.0-rc.2`**（本版本同时让插件可在 `0.2.2-rc.1` 上加载，见下）
 
 ### 修复
 
 - **DSH 0.2.2 上每一轮都在装配阶段抛 `assembly.tools is not iterable`，会话整轮失败**：DSH ≤ 0.2.1 调用 `system-prompt/assemble` waterfall 时 assembly 里已经带 `tools`，0.2.2 改成**先跑 waterfall、再挂工具列表**，所以进钩子的 assembly 只有 `sections`/`contexts`/`variables`。`installToolControl()` 的旧钩子无条件 `for (const tool of assembly.tools)` → `TypeError: assembly.tools is not iterable`，抛在 pre-step 装配、模型还没被调用，界面上只显示「本轮运行失败」。现在这段变换抽到不依赖 DSH 模块的 `lib/tool-assembly.js`：assembly 没有工具数组时按「该接缝在本核心不可用」降级——不修改 assembly、不抛错、直接 `return next()`，并用一条一次性 `warn` 说明「按工具开关过滤 / search 模式注入在此核心不生效」（核心随后会用自己那份 `tools` 覆盖钩子写回的值，这两项能力本来也无法在 0.2.2 上生效）
+- **设置页点「保存」没反应，即使表单内容本身合法**：编辑器 `<form>` 没有关闭浏览器原生约束校验，`type="url"` 的地址框和 `min` 的数值框会静默拦下 submit——不弹提示、也没有错误行，用户看到的就是「点了保存但什么都没发生」。现在表单改为 `noValidate`，输入合法性统一由宿主的 `validateServerInput` 判定，失败时以 `MCP_INVALID_SPEC` 加可读消息回显
+- **保存 / 删除宿主明确返回失败，界面却当成成功**：`save`、`remove` 检查的是 Remote carrier 的 `ok`（传输层成功），而不是 carrier 里 `value.ok`（宿主业务结果），于是「名称冲突 / 必填缺失」这类错误被整条吞掉，列表不刷新、也没有任何提示。现在先解包 carrier 再判 `value.ok`，宿主的错误码与消息原样透出
+- **保存成功后仍抛 `TypeError: Cannot read properties of null (reading 'serverName')`**：`cancelEdit()` 会先把 `draft` 置空，紧接着 `onSaved` 又去读 `state.draft.serverName`，异常被 save 的 `catch` 捕获后当成保存失败显示；同时「保存后 2s/6s 自动刷新徽标与工具数」的两个定时器再也不会被挂上。现在由表单把 serverName 通过 `onSaved(serverName)` 传出
+- **Windows 上客户端包加载失败、Web 壳起不来**：`scripts/build.mjs` 的 CSS module loader 只按 `/` 切分路径，而 Windows 传给 esbuild 的 `args.path` 是反斜杠，生成的 `<style data-file>` 里残留完整 `C:\Users\...`，运行时 `querySelector('style[data-file="C:\Users\..."]')` 抛 `DOMException: not a valid selector`，整个 client bundle 导入失败。现在按 `/[/\\]/` 切分，跨平台取到同一个基名
 
 ### 说明
 
+- 保存流程**不再强制先跑一次连通性测试**：宿主才是 spec 的权威，临时连不上的服务器也必须允许保存。若本次编辑里用户已经点过「测试连接」且失败，保存成功后以「操作提示」形式给出警告，而不是阻断保存
+- 本次改动包含客户端（`src/client/*`），`lib/client.js` 已按仓库既有构建流程重建；产物差异只反映上述源码改动，未引入任何依赖版本变化
 - 新增 `test/tool-assembly.test.mjs`（**不依赖 DSH 模块闭包**，任何环境都会执行）：覆盖 ① 无 `tools` 的 assembly 不抛错、原对象不被修改；② all 模式仍按开关过滤，并保持「非 MCP 工具在前 + MCP 工具按名排序」的稳定顺序（prompt-cache 前提）；③ search 模式只注入热工具，且 `mcp-tool-control` 段落重复执行时幂等替换、不叠加；④ `lib/index.js` 的钩子必须委托给该变换，禁止再直接遍历 `assembly.tools`
-- 只改宿主侧 `lib/index.js` + 新增 `lib/tool-assembly.js`：客户端包 `lib/client.js` 与所有 Remote 接口未变，升级后无需重新构建产物
+- 宿主侧新增 `lib/tool-assembly.js` 并改造 `lib/index.js` 的装配钩子；客户端侧改动集中在 `src/client/`（保存链路与构建脚本），`lib/client.js` 为对应重建产物
 
 ## [1.14.4] - 2026-11-03
 

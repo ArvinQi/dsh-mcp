@@ -12,18 +12,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Supported DSH version**: **dsh `0.2.0-rc.2`** — the latest release is developed and verified on `0.2.0-rc.2` (declared in `package.json` → `dsh.supported`); older entries state the version verified at their time. When the DSH and plugin versions do not match, the Settings page reports a diagnosis (check whether the bundle is selected → restart `dsh web` → hard-refresh → upgrade both sides).
 - **Release convention**: every version entry states `- **Supported DSH version**: dsh <version>`, mirrored in the GitHub Release notes. The release body is written in **Chinese** (matching [CHANGELOG.md](CHANGELOG.md)), with heading levels mirroring the entry.
 
-## [Unreleased]
+## [1.15.0] - 2026-11-06
 
-- **Supported DSH version**: **dsh `0.2.0-rc.2`** (this fix also lets the plugin load on `0.2.2-rc.1`, see below)
+- **Supported DSH version**: **dsh `0.2.0-rc.2`** (this release also lets the plugin load on `0.2.2-rc.1`, see below)
 
 ### Fixed
 
 - **On DSH 0.2.2 every turn threw `assembly.tools is not iterable` during assembly, killing the whole turn**: DSH ≤ 0.2.1 passed the `system-prompt/assemble` waterfall an assembly that already carried `tools`; 0.2.2 runs the waterfall **first** and attaches the tool list afterwards, so the hook receives only `sections`/`contexts`/`variables`. The old `installToolControl()` hook iterated `assembly.tools` unconditionally → `TypeError: assembly.tools is not iterable` right in pre-step assembly, before the model was ever called, surfacing as "this turn failed". The transform now lives in `lib/tool-assembly.js` (no DSH module dependency): when the assembly carries no tool array it degrades to "this seam is unavailable on this core" — it does not mutate the assembly, does not throw, and simply `return next()`, with a one-shot `warn` explaining that per-tool switches / search-mode injection are inactive on such a core (the core overwrites the hook's tool list afterwards anyway, so neither capability can work on 0.2.2)
+- **The settings page "Save" button did nothing, even with an otherwise valid form**: the editor `<form>` never disabled native constraint validation, so the `type="url"` address field and the `min` numeric field could silently block submit — no bubble, no error line, just "clicked save and nothing happened". The form is now `noValidate` and input legality is decided by the Host's `validateServerInput`, which reports failures as `MCP_INVALID_SPEC` with a readable message
+- **A Host-side save/delete failure was reported as success in the UI**: `save` and `remove` inspected the Remote carrier's `ok` (transport success) instead of `value.ok` inside it (the Host's business outcome), so errors like "name conflict" or "missing required field" were swallowed — no list refresh and no message. The carrier is now unwrapped before checking `value.ok`, and the Host's code/message surface unchanged
+- **A successful save still threw `TypeError: Cannot read properties of null (reading 'serverName')`**: `cancelEdit()` nulls `draft` before `onSaved` runs, and reading `state.draft.serverName` there threw; the save `catch` then reported it as a save failure, and the two "refresh badge/tool count after save" timers were never scheduled. The form now passes the name out through `onSaved(serverName)`
+- **On Windows the client bundle failed to load and the Web shell would not boot**: the CSS module loader in `scripts/build.mjs` split `args.path` on `/` only, but Windows hands esbuild backslash paths, so the emitted `<style data-file>` kept the full `C:\Users\...` prefix and the runtime `querySelector('style[data-file="C:\Users\..."]')` threw `DOMException: not a valid selector`, aborting the whole bundle import. It now splits on `/[/\\]/` so both platforms yield the same basename
 
 ### Notes
 
 - New `test/tool-assembly.test.mjs` (**needs no DSH module closure**, so it runs everywhere): covers (1) an assembly without `tools` neither throws nor mutating the payload, (2) `all` mode still filters switched-off tools and keeps the stable "non-MCP first + MCP sorted by name" order (the prompt-cache prerequisite), (3) `search` mode keeps only hot tools and replaces — never duplicates — the `mcp-tool-control` section, (4) the `lib/index.js` hook must delegate to that transform and must not iterate `assembly.tools` directly
-- Host side only: `lib/index.js` plus the new `lib/tool-assembly.js`; the client bundle `lib/client.js` and every Remote interface are unchanged, so no client rebuild is required
+- Host side adds `lib/tool-assembly.js` and reworks the assemble hook in `lib/index.js`; the client side changes are in `src/client/` (save path and build script), with `lib/client.js` rebuilt to match
+- Saving **no longer runs a mandatory connectivity probe first**: the Host is the authority on the spec, and a server that is temporarily unreachable must still be savable. If the user already ran "Test connection" in this editor and it failed, the page shows an advisory notice after a successful save instead of blocking it
 
 ## [1.14.4] - 2026-11-03
 

@@ -12,6 +12,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Supported DSH version**: **dsh `0.2.0-rc.2`** — the latest release is developed and verified on `0.2.0-rc.2` (declared in `package.json` → `dsh.supported`); older entries state the version verified at their time. When the DSH and plugin versions do not match, the Settings page reports a diagnosis (check whether the bundle is selected → restart `dsh web` → hard-refresh → upgrade both sides).
 - **Release convention**: every version entry states `- **Supported DSH version**: dsh <version>`, mirrored in the GitHub Release notes. The release body is written in **Chinese** (matching [CHANGELOG.md](CHANGELOG.md)), with heading levels mirroring the entry.
 
+## [Unreleased]
+
+- **Supported DSH version**: **dsh `0.2.0-rc.2`** (this fix also lets the plugin load on `0.2.2-rc.1`, see below)
+
+### Fixed
+
+- **On DSH 0.2.2 every turn threw `assembly.tools is not iterable` during assembly, killing the whole turn**: DSH ≤ 0.2.1 passed the `system-prompt/assemble` waterfall an assembly that already carried `tools`; 0.2.2 runs the waterfall **first** and attaches the tool list afterwards, so the hook receives only `sections`/`contexts`/`variables`. The old `installToolControl()` hook iterated `assembly.tools` unconditionally → `TypeError: assembly.tools is not iterable` right in pre-step assembly, before the model was ever called, surfacing as "this turn failed". The transform now lives in `lib/tool-assembly.js` (no DSH module dependency): when the assembly carries no tool array it degrades to "this seam is unavailable on this core" — it does not mutate the assembly, does not throw, and simply `return next()`, with a one-shot `warn` explaining that per-tool switches / search-mode injection are inactive on such a core (the core overwrites the hook's tool list afterwards anyway, so neither capability can work on 0.2.2)
+
+### Notes
+
+- New `test/tool-assembly.test.mjs` (**needs no DSH module closure**, so it runs everywhere): covers (1) an assembly without `tools` neither throws nor mutating the payload, (2) `all` mode still filters switched-off tools and keeps the stable "non-MCP first + MCP sorted by name" order (the prompt-cache prerequisite), (3) `search` mode keeps only hot tools and replaces — never duplicates — the `mcp-tool-control` section, (4) the `lib/index.js` hook must delegate to that transform and must not iterate `assembly.tools` directly
+- Host side only: `lib/index.js` plus the new `lib/tool-assembly.js`; the client bundle `lib/client.js` and every Remote interface are unchanged, so no client rebuild is required
+
 ## [1.14.4] - 2026-11-03
 
 - **Supported DSH version**: **dsh `0.2.0-rc.2`**

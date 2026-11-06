@@ -12,6 +12,19 @@
 - **支持版本**：**dsh `0.2.0-rc.2`** —— 最新版本在 `0.2.0-rc.2` 上开发与验证（`package.json` → `dsh.supported` 同步声明）；历史版本条目各自声明当时验证的版本。DSH 与插件版本不匹配时，设置页会给出排查诊断（核对 bundle 是否已选中 → 重启 `dsh web` → 硬刷新 → 同步升级）。
 - **发版约定**：每个版本条目都要声明 `- **支持版本**：dsh <版本>`，并在 GitHub Release notes 中同步。Release 正文用**中文**（与本文档一致），标题层级与条目一致。
 
+## [未发布]
+
+- **支持版本**：**dsh `0.2.0-rc.2`**（本修复同时让插件可在 `0.2.2-rc.1` 上加载，见下）
+
+### 修复
+
+- **DSH 0.2.2 上每一轮都在装配阶段抛 `assembly.tools is not iterable`，会话整轮失败**：DSH ≤ 0.2.1 调用 `system-prompt/assemble` waterfall 时 assembly 里已经带 `tools`，0.2.2 改成**先跑 waterfall、再挂工具列表**，所以进钩子的 assembly 只有 `sections`/`contexts`/`variables`。`installToolControl()` 的旧钩子无条件 `for (const tool of assembly.tools)` → `TypeError: assembly.tools is not iterable`，抛在 pre-step 装配、模型还没被调用，界面上只显示「本轮运行失败」。现在这段变换抽到不依赖 DSH 模块的 `lib/tool-assembly.js`：assembly 没有工具数组时按「该接缝在本核心不可用」降级——不修改 assembly、不抛错、直接 `return next()`，并用一条一次性 `warn` 说明「按工具开关过滤 / search 模式注入在此核心不生效」（核心随后会用自己那份 `tools` 覆盖钩子写回的值，这两项能力本来也无法在 0.2.2 上生效）
+
+### 说明
+
+- 新增 `test/tool-assembly.test.mjs`（**不依赖 DSH 模块闭包**，任何环境都会执行）：覆盖 ① 无 `tools` 的 assembly 不抛错、原对象不被修改；② all 模式仍按开关过滤，并保持「非 MCP 工具在前 + MCP 工具按名排序」的稳定顺序（prompt-cache 前提）；③ search 模式只注入热工具，且 `mcp-tool-control` 段落重复执行时幂等替换、不叠加；④ `lib/index.js` 的钩子必须委托给该变换，禁止再直接遍历 `assembly.tools`
+- 只改宿主侧 `lib/index.js` + 新增 `lib/tool-assembly.js`：客户端包 `lib/client.js` 与所有 Remote 接口未变，升级后无需重新构建产物
+
 ## [1.14.4] - 2026-11-03
 
 - **支持版本**：**dsh `0.2.0-rc.2`**

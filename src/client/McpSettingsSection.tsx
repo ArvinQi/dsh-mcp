@@ -442,11 +442,14 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
         t={t}
         actions={actions}
         injected={{ save, remove, test, list, oauthStart, oauthStatus }}
-        onSaved={() => {
+        onSaved={(serverName, warning) => {
           // Mounting is asynchronous: refresh again after the connection
           // settles so the badge and tool count reflect the live state without
-          // a manual refresh (mirrors the enable-toggle path).
-          const serverName = state.draft.serverName
+          // a manual refresh (mirrors the enable-toggle path). The name is
+          // carried out of the form because `cancelEdit` nulls the draft
+          // before this callback runs.
+          if (warning !== undefined) setActionNotice(warning)
+          if (serverName.length === 0) return
           timersRef.current.push(window.setTimeout(() => refreshServer(serverName), 2000))
           timersRef.current.push(window.setTimeout(() => refreshServer(serverName), 6000))
         }}

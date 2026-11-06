@@ -20,15 +20,26 @@ type McpRemoteResult<Value> =
   | { readonly ok: true; readonly value: Value }
   | { readonly ok: false; readonly error: { readonly code: string; readonly message: string } }
 
+/**
+ * Business outcome the Host returns *inside* a carrier result. `upsert` and
+ * `delete` reject invalid specs and conflicts here rather than as a carrier
+ * failure, so the caller must inspect `value.ok` — checking the carrier's own
+ * `ok` swallows the Host's error and reports a false success.
+ */
+type McpHostOutcome<Value = unknown> =
+  | ({ readonly ok: true } & Value)
+  | { readonly ok: false; readonly error: { readonly code: string; readonly message: string } }
+
 /** Wire face of the self-mounted `mcpManager` Remote namespace. */
 interface McpManagerRemote {
   list(): Promise<McpRemoteResult<{ readonly servers: readonly McpServerView[] }>>
   upsert(request: {
     readonly id?: McpServerId
     readonly server: unknown
-    readonly env: readonly unknown[]
-  }): Promise<McpRemoteResult<{ readonly server: McpServerView }>>
-  delete(request: { readonly id: McpServerId }): Promise<McpRemoteResult<unknown>>
+    /** Omitted or empty keeps the stored env unchanged. */
+    readonly env?: readonly unknown[]
+  }): Promise<McpRemoteResult<McpHostOutcome<{ readonly server: McpServerView }>>>
+  delete(request: { readonly id: McpServerId }): Promise<McpRemoteResult<McpHostOutcome>>
   upsertJson(request: { readonly servers: readonly unknown[] }): Promise<McpRemoteResult<{
     readonly added: number
     readonly updated: number
@@ -138,17 +149,19 @@ export async function apply(ctx: Context): Promise<void> {
     },
     save: async (draft) => {
       const submission = draftToSubmission(draft)
-      const result = await manager.upsert({
+      // Two layers: the carrier (`ok`/`value`) from the Remote transport, then
+      // the Host's own outcome inside it. Unwrapping the carrier and reading
+      // `value.ok` is what surfaces "invalid spec" / "name conflict" instead of
+      // reporting a save that never happened.
+      const outcome = await unwrap(() => manager.upsert({
         ...draft.id === null ? {} : { id: draft.id },
         server: submission.server,
-      })
-      if (result.ok) return null
-      return failureOf(result.error)
+      }))
+      return outcome.ok ? null : failureOf(outcome.error)
     },
     remove: async (id) => {
-      const result = await manager.delete({ id })
-      if (result.ok) return null
-      return failureOf(result.error)
+      const outcome = await unwrap(() => manager.delete({ id }))
+      return outcome.ok ? null : failureOf(outcome.error)
     },
     upsertJson: async (servers) => {
       const result = await unwrap(() => manager.upsertJson({ servers }))

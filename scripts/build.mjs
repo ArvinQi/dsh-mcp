@@ -101,7 +101,13 @@ function cssModuleLoader() {
           [...selectorText.matchAll(/\.([A-Za-z_][A-Za-z0-9_-]*)/g)].map((match) => match[1]),
         )]
         const map = Object.fromEntries(classes.map((name) => [name, name]))
-        const file = args.path.split('/').pop()
+        // Windows hands the CSS module loader backslash-separated paths.
+        // Splitting only on '/' keeps the whole `C:\Users\...` prefix inside
+        // `data-file`, and the runtime lookup below then builds
+        // `style[data-plugin="dsh-mcp"][data-file="C:\Users\..."]` — an
+        // invalid selector, so querySelector throws and the client bundle
+        // never loads (the Web shell fails to boot).
+        const file = args.path.split(/[/\\]/).pop()
         const contents = [
           `(function () {`,
           `  if (typeof document !== 'undefined') {`,

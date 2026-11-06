@@ -44,8 +44,13 @@ export interface McpServerFormProps {
   t: (key: McpSettingsLocaleKey) => string
   actions: McpServerFormActions
   injected: McpServerFormRemote
-  /** Called after a successful save, before the editor closes. */
-  onSaved?: () => void
+  /**
+   * Called after a successful save, before the editor closes. Carries the
+   * server name (the draft is nulled by `cancelEdit`, so reading it back from
+   * the store here threw a TypeError and lost the post-save refresh) and an
+   * optional advisory: a connection failure already observed for this draft.
+   */
+  onSaved?: (serverName: string, warning?: string) => void
 }
 
 /** Render the editor for one server draft. */
@@ -126,14 +131,23 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
     setSaveError(null)
     actions.setBusy('save')
     try {
+      // Saving never runs a mandatory probe: the Host is the authority on the
+      // spec, and a server that is temporarily unreachable (or still
+      // authorizing) must still be savable. A connection failure the user
+      // already observed in this editor is passed along as an advisory so the
+      // page can warn instead of silently pretending everything is healthy.
+      const observed = test?.probe
+      const warning = observed !== undefined && observed.ok === false && observed.oauthRequired !== true
+        ? `${t('testFail')}: ${observed.message}`
+        : undefined
       const failure = await injected.save(draft)
       if (failure !== null) {
         setSaveError(`${failure.code}: ${failure.message}`)
         return
       }
       if (!await refresh()) return
+      onSaved?.(draft.serverName.trim(), warning)
       actions.cancelEdit()
-      onSaved?.()
     } catch (error) {
       console.error('[dsh-mcp] save failed:', error)
       setSaveError(errorText(error))
@@ -176,7 +190,12 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
   const stdio = draft.transport === 'stdio'
   const probe = test?.probe
   return (
-    <form className={css.form} onSubmit={(event) => { event.preventDefault(); void submit() }}>
+    // `noValidate` keeps the browser's native constraint validation out of the
+    // way: `type="url"` rejected values the Host accepts (e.g. a bare
+    // `host:port`), and the blocked submit produced no error line at all —
+    // "保存没有触发即便格式合法". The Host validates the spec and reports
+    // `MCP_INVALID_SPEC` with a localized message.
+    <form className={css.form} noValidate onSubmit={(event) => { event.preventDefault(); void submit() }}>
       <div className={css.titleRow}>
         <h3 className={css.title}>{draft.id === null ? t('newTitle') : t('editTitle')}</h3>
         <div className={css.titleActions}>

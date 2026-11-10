@@ -12,6 +12,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Supported DSH version**: **dsh `0.2.0-rc.2`** — the latest release is developed and verified on `0.2.0-rc.2` (declared in `package.json` → `dsh.supported`); older entries state the version verified at their time. When the DSH and plugin versions do not match, the Settings page reports a diagnosis (check whether the bundle is selected → restart `dsh web` → hard-refresh → upgrade both sides).
 - **Release convention**: every version entry states `- **Supported DSH version**: dsh <version>`, mirrored in the GitHub Release notes. The release body is written in **Chinese** (matching [CHANGELOG.md](CHANGELOG.md)), with heading levels mirroring the entry.
 
+## [Unreleased]
+
+### Fixed
+
+- **Search mode and per-tool switches were complete no-ops on DSH 0.2.2, which kept injecting every MCP tool (issue #23)**: 0.2.2 no longer hands the tool list to `system-prompt/assemble` — the model-facing set is built by `systemPrompt.tools()` from a **per-step admission set** (`tools.resolve()` → `registration.when(context)`), so "filter an already-built list" is not a thing that can work: a tool outside the set never arrives no matter how it is filtered, and one inside cannot be removed. The result was 314 tools ≈ 305.6 KB ≈ 82k tokens on every request, with `mcp_tool_search` and the checkboxes both inert. The plugin now declares `when` **at registration time**: `installToolControl()` wraps `ctx.tools.register` synchronously before any mount registers a tool, attaching "switched off → refuse; `search` mode → admit only the hot set; `full` mode → admit everything" to every `mcp__*` registration for the core to resolve each step. `mcp_tool_search` sits outside the `mcp__` namespace, so it stays visible and callable — it records the matched tools as hot, which admits them on the next step, which is what finally makes `search` mode save tokens. A caller-supplied `when` is preserved and ANDed after the plugin's admission; cores ≤ 0.2.1 take a single-argument `register`, so the extra `when` is ignored and the existing waterfall filter still applies. Unload/reload restores the original `register` and never overwrites a wrapper added later
+- **The degraded-path log no longer misleads**: when the "no tool list" seam of 0.2.2 is hit but the admission gate is live, the message drops to `info` and states that switches and search mode are enforced at registration time; only a core with neither seam nor admission capability gets a `warn` that the configuration is inert
+- **`toolsList()` now reports `enforcement`**: `admission` (per-step, 0.2.2) / `waterfall` (hook filtering, ≤ 0.2.1) / `unavailable` (neither), so the settings page and diagnostics can tell whether the injection mode and switches actually take effect
+
+### Notes
+
+- New `test/tool-admission.test.mjs` (no DSH module closure — runs anywhere): covers ① the admission matrix (`search`/`full` × switches × hot set); ② only the `mcp__` namespace is wrapped, `mcp_tool_search` and ordinary tools are untouched; ③ a caller-supplied `when` is preserved and can still veto; ④ the ≤ 0.2.1 single-argument registration shape is unchanged; ⑤ idempotent install and disposer restoration
+- No client source changes: `lib/client.js` rebuilds byte-for-byte identically
+
 ## [1.15.0] - 2026-11-06
 
 - **Supported DSH version**: **dsh `0.2.0-rc.2`** (this release also lets the plugin load on `0.2.2-rc.1`, see below)

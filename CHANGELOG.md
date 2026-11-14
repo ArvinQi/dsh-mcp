@@ -12,6 +12,18 @@
 - **支持版本**：**dsh `0.2.2-rc.1`** —— 最新版本在 `0.2.2-rc.1` 上开发与验证（`package.json` → `dsh.supported` 同步声明）；历史版本条目各自声明当时验证的版本。DSH 与插件版本不匹配时，设置页会给出排查诊断（核对 bundle 是否已选中 → 重启 `dsh web` → 硬刷新 → 同步升级）。
 - **发版约定**：每个版本条目都要声明 `- **支持版本**：dsh <版本>`，并在 GitHub Release notes 中同步。Release 正文用**中文**（与本文档一致），标题层级与条目一致。
 
+## [Unreleased]
+
+### 修复
+
+- **DSH 0.2.2-rc.2/rc.3 上插件直接不可用：`typert: Remote package "@deepseek-ai/dsh-mcp-manager" is already registered`（issue #24）**：0.2.2-rc.2 起 DSH 内置了官方 `@deepseek-ai/dsh-mcp-manager`，它的客户端 bundle 以同一个 Remote 包名挂载 contribution；客户端 typert registry 对包名做唯一所有权校验（`RemoteStore.register`），本插件再用同名注册就抛错，插件行显示错误、管理界面无法使用。现在把本插件的 Remote 包 id 改为自己的包名 **`dsh-mcp`**（14 个方法 id 与对应 typeSymbol 一并改名）。改包名是安全的：调用路由只按 endpoint `namespace/method`（`typertEndpoint()`），本插件的 `mcpManager/*` 端点一个未动；官方管理器只声明 `mcpManager/probe|restart|watch`，与本插件端点无交集，因此端点层也不会撞车
+- 新增 `test/typert-package.test.mjs`：断言 Remote 包名等于本包名且不等于上游包名、所有 descriptor id 均在自己的包名下、端点唯一且不与内置管理器的 `probe/restart/watch` 重叠
+
+### 说明
+
+- `src/client/remote-contribution.js` 是 typert 生成文件，本次改名是手工修改（仓库内没有生成器配置与 FaceModel）；文件头已写明原因，以及「重新生成时必须携带唯一包名」的约束
+- `lib/client.js` 已重建：diff 仅 40 行（纯改名），zod 仍为 4.4.3，无依赖/路径漂移，重建结果可复现
+
 ## [1.15.1] - 2026-11-10
 
 - **支持版本**：**dsh `0.2.2-rc.1`**

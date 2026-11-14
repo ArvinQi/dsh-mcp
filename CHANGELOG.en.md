@@ -12,6 +12,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Supported DSH version**: **dsh `0.2.2-rc.1`** — the latest release is developed and verified on `0.2.2-rc.1` (declared in `package.json` → `dsh.supported`); older entries state the version verified at their time. When the DSH and plugin versions do not match, the Settings page reports a diagnosis (check whether the bundle is selected → restart `dsh web` → hard-refresh → upgrade both sides).
 - **Release convention**: every version entry states `- **Supported DSH version**: dsh <version>`, mirrored in the GitHub Release notes. The release body is written in **Chinese** (matching [CHANGELOG.md](CHANGELOG.md)), with heading levels mirroring the entry.
 
+## [Unreleased]
+
+### Fixed
+
+- **The plugin was unusable on DSH 0.2.2-rc.2/rc.3: `typert: Remote package "@deepseek-ai/dsh-mcp-manager" is already registered` (issue #24)**: since 0.2.2-rc.2 DSH ships an official `@deepseek-ai/dsh-mcp-manager`, whose client bundle mounts a Remote contribution under that same package name; the client typert registry enforces one owner per package name (`RemoteStore.register`), so registering under the same name throws and leaves the plugin row in an error state with an unusable settings page. The plugin's Remote package id is now its own package name, **`dsh-mcp`** (14 method ids and their typeSymbols renamed with it). Renaming is safe: an invocation routes only by the `namespace/method` endpoint (`typertEndpoint()`), and every `mcpManager/*` endpoint is unchanged; the official manager declares only `mcpManager/probe|restart|watch`, so the endpoint sets do not overlap either
+- New `test/typert-package.test.mjs`: asserts the Remote package id equals this package's name and not the upstream one, that every descriptor id sits under our own package, and that endpoints are unique and never overlap the built-in manager's `probe/restart/watch`
+
+### Notes
+
+- `src/client/remote-contribution.js` is a typert-generated file; the rename is a manual edit (the repository carries no generator config or FaceModel). The file header records why, and the constraint that a re-generation must carry a unique package name
+- `lib/client.js` was rebuilt: the diff is 40 lines of pure renaming, zod stays 4.4.3, no dependency or path drift, and the build is reproducible
+
 ## [1.15.1] - 2026-11-10
 
 - **Supported DSH version**: **dsh `0.2.2-rc.1`**

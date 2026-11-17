@@ -12,6 +12,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Supported DSH version**: **dsh `0.2.2-rc.3`** — the latest release is developed and verified on `0.2.2-rc.3` (declared in `package.json` → `dsh.supported`); older entries state the version verified at their time. When the DSH and plugin versions do not match, the Settings page reports a diagnosis (check whether the bundle is selected → restart `dsh web` → hard-refresh → upgrade both sides).
 - **Release convention**: every version entry states `- **Supported DSH version**: dsh <version>`, mirrored in the GitHub Release notes. The release body is written in **Chinese** (matching [CHANGELOG.md](CHANGELOG.md)), with heading levels mirroring the entry.
 
+## [Unreleased]
+
+### Fixed
+
+- **Plugin failed to mount on DSH 0.2.2-rc.3: `service "mcpManager" has been registered at <McpServerManager>` (issue #25)**: since rc.3 DSH ships `McpServerManager`, which owns the `mcpManager` Cordis service key, while this plugin registered the very same key — Cordis refuses a second registration of one key, so the plugin row errored out and the MCP settings page was unusable. The plugin's Cordis service key is now **`dshMcpManager`**, with the wire namespace still declared as `mcpManager` (`super(ctx, "dshMcpManager", { namespace: "mcpManager" })`). The Remote contract is therefore unchanged: the client contribution's `namespace` and every endpoint stay as they were, and the gateway routes by `<namespace>/<method>` rather than by service key; the endpoint sets still never overlap the built-in manager's `mcpManager/probe|restart|watch`
+- The client descriptors' `service` field now names `dshMcpManager` too (14 places) while `namespace` stays `mcpManager`: the gateway resolves the receiver with `ctx.get(descriptor.service)` and then validates the binding against `descriptor.namespace`, so both must mirror the host's `super(ctx, …)` arguments — changing one side alone makes every call fail with `gateway/method-unavailable`
+- New `test/service-key.test.mjs`: asserts the host no longer claims the `mcpManager` Cordis service key and that every client descriptor's `service`/`namespace` matches the host declaration (guarding against a one-sided rename)
+
+### Notes
+
+- `lib/client.js` rebuilt: 14 changed lines (the `service` field), `zod` stays 4.4.3, no dependency or path drift, and the build is reproducible
+
 ## [1.15.2] - 2026-11-15
 
 - **Supported DSH version**: **dsh `0.2.2-rc.3`**

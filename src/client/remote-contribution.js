@@ -14,6 +14,15 @@
  * The official manager declares only `mcpManager/probe|restart|watch`, so the
  * endpoint sets do not overlap either. Rename these ids back only together with
  * a re-generated FaceModel that carries a unique package name.
+ *
+ * `service` is the Cordis service key and `namespace` is the wire namespace: the
+ * gateway dispatches by `ctx.get(descriptor.service)` and then validates the
+ * binding against both fields. DSH 0.2.2-rc.3 ships McpServerManager, which owns
+ * the `mcpManager` service key (issue #25), so the host half registers under
+ * `dshMcpManager` while keeping the `mcpManager` wire namespace. These
+ * descriptors therefore carry `service: 'dshMcpManager'` and
+ * `namespace: 'mcpManager'` — both must move together with the host's
+ * `super(ctx, …)` arguments.
  */
 import { z } from 'zod'
 
@@ -461,7 +470,7 @@ export const TYPERT_REMOTE = {
   descriptors: [
     {
       id: 'dsh-mcp#mcpManager/delete',
-      service: 'mcpManager',
+      service: 'dshMcpManager',
       namespace: 'mcpManager',
       method: 'delete',
       invocation: { kind: 'direct' },
@@ -488,7 +497,7 @@ export const TYPERT_REMOTE = {
     },
     {
       id: 'dsh-mcp#mcpManager/list',
-      service: 'mcpManager',
+      service: 'dshMcpManager',
       namespace: 'mcpManager',
       method: 'list',
       invocation: { kind: 'direct' },
@@ -504,7 +513,7 @@ export const TYPERT_REMOTE = {
     },
     {
       id: 'dsh-mcp#mcpManager/test',
-      service: 'mcpManager',
+      service: 'dshMcpManager',
       namespace: 'mcpManager',
       method: 'test',
       invocation: { kind: 'direct' },
@@ -531,7 +540,7 @@ export const TYPERT_REMOTE = {
     },
     {
       id: 'dsh-mcp#mcpManager/upsert',
-      service: 'mcpManager',
+      service: 'dshMcpManager',
       namespace: 'mcpManager',
       method: 'upsert',
       invocation: { kind: 'direct' },
@@ -558,7 +567,7 @@ export const TYPERT_REMOTE = {
     },
     {
       id: 'dsh-mcp#mcpManager/upsertJson',
-      service: 'mcpManager',
+      service: 'dshMcpManager',
       namespace: 'mcpManager',
       method: 'upsertJson',
       invocation: { kind: 'direct' },
@@ -585,7 +594,7 @@ export const TYPERT_REMOTE = {
     },
     {
       id: 'dsh-mcp#mcpManager/toolsList',
-      service: 'mcpManager',
+      service: 'dshMcpManager',
       namespace: 'mcpManager',
       method: 'toolsList',
       invocation: { kind: 'direct' },
@@ -601,7 +610,7 @@ export const TYPERT_REMOTE = {
     },
     {
       id: 'dsh-mcp#mcpManager/toolsSet',
-      service: 'mcpManager',
+      service: 'dshMcpManager',
       namespace: 'mcpManager',
       method: 'toolsSet',
       invocation: { kind: 'direct' },
@@ -628,7 +637,7 @@ export const TYPERT_REMOTE = {
     },
     {
       id: 'dsh-mcp#mcpManager/toolsMode',
-      service: 'mcpManager',
+      service: 'dshMcpManager',
       namespace: 'mcpManager',
       method: 'toolsMode',
       invocation: { kind: 'direct' },
@@ -655,7 +664,7 @@ export const TYPERT_REMOTE = {
     },
     {
       id: 'dsh-mcp#mcpManager/envList',
-      service: 'mcpManager',
+      service: 'dshMcpManager',
       namespace: 'mcpManager',
       method: 'envList',
       invocation: { kind: 'direct' },
@@ -671,7 +680,7 @@ export const TYPERT_REMOTE = {
     },
     {
       id: 'dsh-mcp#mcpManager/envSet',
-      service: 'mcpManager',
+      service: 'dshMcpManager',
       namespace: 'mcpManager',
       method: 'envSet',
       invocation: { kind: 'direct' },
@@ -698,7 +707,7 @@ export const TYPERT_REMOTE = {
     },
     {
       id: 'dsh-mcp#mcpManager/adopt',
-      service: 'mcpManager',
+      service: 'dshMcpManager',
       namespace: 'mcpManager',
       method: 'adopt',
       invocation: { kind: 'direct' },
@@ -725,7 +734,7 @@ export const TYPERT_REMOTE = {
     },
     {
       id: 'dsh-mcp#mcpManager/release',
-      service: 'mcpManager',
+      service: 'dshMcpManager',
       namespace: 'mcpManager',
       method: 'release',
       invocation: { kind: 'direct' },
@@ -752,7 +761,7 @@ export const TYPERT_REMOTE = {
     },
     {
       id: 'dsh-mcp#mcpManager/oauthStart',
-      service: 'mcpManager',
+      service: 'dshMcpManager',
       namespace: 'mcpManager',
       method: 'oauthStart',
       invocation: { kind: 'direct' },
@@ -779,7 +788,7 @@ export const TYPERT_REMOTE = {
     },
     {
       id: 'dsh-mcp#mcpManager/oauthStatus',
-      service: 'mcpManager',
+      service: 'dshMcpManager',
       namespace: 'mcpManager',
       method: 'oauthStatus',
       invocation: { kind: 'direct' },

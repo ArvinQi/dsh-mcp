@@ -12,6 +12,18 @@
 - **支持版本**：**dsh `0.2.2-rc.3`** —— 最新版本在 `0.2.2-rc.3` 上开发与验证（`package.json` → `dsh.supported` 同步声明）；历史版本条目各自声明当时验证的版本。DSH 与插件版本不匹配时，设置页会给出排查诊断（核对 bundle 是否已选中 → 重启 `dsh web` → 硬刷新 → 同步升级）。
 - **发版约定**：每个版本条目都要声明 `- **支持版本**：dsh <版本>`，并在 GitHub Release notes 中同步。Release 正文用**中文**（与本文档一致），标题层级与条目一致。
 
+## [Unreleased]
+
+### 修复
+
+- **DSH 0.2.2-rc.3 上插件挂载失败：`service "mcpManager" has been registered at <McpServerManager>`（issue #25）**：rc.3 起 DSH 内置的 `McpServerManager` 占用了 Cordis 服务键 `mcpManager`，而本插件一直用它作为自己的服务名——Cordis 不允许同一个服务键注册两次，于是插件行直接报错、MCP 设置页不可用。现在把本插件的 Cordis 服务键改为 **`dshMcpManager`**，同时**显式声明线名仍为 `mcpManager`**（`super(ctx, "dshMcpManager", { namespace: "mcpManager" })`）。Remote 契约因此完全不变：客户端 contribution 的 `namespace` 与全部 endpoint 一个未动，网关按 `<namespace>/<method>` 路由而非按服务键解析；与内置管理器 `mcpManager/probe|restart|watch` 的端点依然无交集
+- 客户端 descriptor 的 `service` 字段同步改为 `dshMcpManager`（14 处），`namespace` 保持 `mcpManager`：网关是按 `ctx.get(descriptor.service)` 取接收者、再用 `descriptor.namespace` 校验绑定的，两者必须与宿主 `super(ctx, …)` 参数一一对应，只改一侧会让每次调用报 `gateway/method-unavailable`
+- 新增 `test/service-key.test.mjs`：断言宿主不再占用 `mcpManager` 这个 Cordis 服务键、且客户端每个 descriptor 的 `service`/`namespace` 都与宿主声明完全一致（防止只改一侧）
+
+### 说明
+
+- `lib/client.js` 重建：diff 仅 14 行（`service` 字段），`zod` 仍为 4.4.3，无依赖/路径漂移，重建可复现
+
 ## [1.15.2] - 2026-11-15
 
 - **支持版本**：**dsh `0.2.2-rc.3`**

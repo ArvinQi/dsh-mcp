@@ -25,7 +25,7 @@
 - **图片结果透传**：MCP 工具返回的图片（截图/图表等）经附件服务投影为图片引用进入模型上下文，带严格预检与有界降级文案（PR #4）
 - **双注入模式**：`search`（按需检索，省 token）与 `full`（全量注入）
 - **零 npm 依赖**：直接对接 DeepSeek Harness 内部能力，安装即用
-- **OAuth 认证支持**：`streamable-http` 服务器若走 MCP OAuth（授权码 + PKCE），服务器卡片点「OAuth 授权」按钮，**由宿主打开系统浏览器**完成授权，本页每 5 秒轮询授权状态；token 与 client 信息持久化在凭据文档；access token 过期后由 SDK 用存储的 refresh token **静默续期**（不会打断使用、也不会再弹浏览器），只有 refresh token 也被吊销/过期时才需要重新授权。**授权完成前只显示「授权中」，授权失败会写明原因**
+- **OAuth 认证支持**：`streamable-http` 服务器若走 MCP OAuth（授权码 + PKCE），服务器卡片点「OAuth 授权」按钮，**由宿主打开系统浏览器**完成授权，本页每 5 秒轮询授权状态；token 与 client 信息持久化在凭据文档；access token 过期后由 SDK 用存储的 refresh token **静默续期**（不会打断使用、也不会再弹浏览器），只有 refresh token 也被吊销/过期时才需要重新授权。**授权完成前只显示「授权中」，授权失败会写明原因**。**支持 issuer 带路径的授权服务器**（如 Appwrite 的 `/v1/oauth2/console`、Keycloak 的 `/realms/<realm>`）：元数据发现与换 token 都使用 issuer 的完整路径，不会退化成站点根路径（否则 `.well-known` 会 404、授权成功但 token 落不了库）
 - **HTTPS 默认按系统证书校验**：内网/公司 CA（只装在系统钥匙串里的根证书）无需再给 `dsh web` 加 `NODE_OPTIONS=--use-system-ca`，插件启动时把系统信任库并入 Node 默认根证书库
 - **三种安装方式**：npm / GitHub git 源 / 本地 link；中英文界面与文档
 

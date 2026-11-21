@@ -12,6 +12,14 @@
 - **支持版本**：**dsh `0.2.2-rc.3`** —— 最新版本在 `0.2.2-rc.3` 上开发与验证（`package.json` → `dsh.supported` 同步声明）；历史版本条目各自声明当时验证的版本。DSH 与插件版本不匹配时，设置页会给出排查诊断（核对 bundle 是否已选中 → 重启 `dsh web` → 硬刷新 → 同步升级）。
 - **发版约定**：每个版本条目都要声明 `- **支持版本**：dsh <版本>`，并在 GitHub Release notes 中同步。Release 正文用**中文**（与本文档一致），标题层级与条目一致。
 
+## [未发布]
+
+### 修复
+
+- **OAuth 换 token 失败：回调里用 `authorizationUrl.origin` 重建授权服务器地址，丢掉 issuer 的路径（issue #27）**：`createToolAuthorizationUrlOnce()` 已经通过 `discoverOAuthServerInfo()` 拿到带路径的 `info.authorizationServerUrl`（如 Appwrite 的 `https://fra.cloud.appwrite.io/v1/oauth2/console`、Keycloak 的 `/realms/<realm>`），但回调换 token 时改成了 `new URL(authorizationUrl.origin)`。对带路径的 issuer，这会请求 `<host>/.well-known/oauth-authorization-server` 并得到 404，SDK 在发出 token 请求之前就抛错——浏览器已显示授权成功，token 却永远不落库，挂载重试还会反复弹出授权页
+- 新增无依赖模块 `lib/oauth-server-url.js`：优先使用发现结果中的授权服务器 URL，仅在没有任何发现结果时回退到授权页的 origin；`lib/oauth.js` 的回调改用该 helper
+- 新增 `test/oauth-server-url.test.mjs`：覆盖带路径 issuer（Appwrite）、字符串形式的发现结果、无发现结果回退、以及非法发现结果回退，断言不会退化成 origin
+
 ## [1.15.3] - 2026-11-18
 
 - **支持版本**：**dsh `0.2.2-rc.3`**

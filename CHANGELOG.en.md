@@ -12,6 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Supported DSH version**: **dsh `0.2.2-rc.3`** — the latest release is developed and verified on `0.2.2-rc.3` (declared in `package.json` → `dsh.supported`); older entries state the version verified at their time. When the DSH and plugin versions do not match, the Settings page reports a diagnosis (check whether the bundle is selected → restart `dsh web` → hard-refresh → upgrade both sides).
 - **Release convention**: every version entry states `- **Supported DSH version**: dsh <version>`, mirrored in the GitHub Release notes. The release body is written in **Chinese** (matching [CHANGELOG.md](CHANGELOG.md)), with heading levels mirroring the entry.
 
+## [Unreleased]
+
+### Fixed
+
+- **OAuth token exchange failed: the callback rebuilt the authorization-server URL from `authorizationUrl.origin`, dropping the issuer's path (issue #27)**: `createToolAuthorizationUrlOnce()` already receives the path-bearing `info.authorizationServerUrl` from `discoverOAuthServerInfo()` (Appwrite's `https://fra.cloud.appwrite.io/v1/oauth2/console`, Keycloak's `/realms/<realm>`, …), but the token-exchange callback used `new URL(authorizationUrl.origin)`. For a path-based issuer that requests `<host>/.well-known/oauth-authorization-server`, which answers 404, so the SDK throws before sending any token request — the browser shows a successful authorization while tokens are never stored, and mount retries keep re-opening the authorization page
+- New dependency-free `lib/oauth-server-url.js`: prefers the discovered authorization-server URL and falls back to the authorization page's origin only when no discovery result exists; the callback in `lib/oauth.js` now uses that helper
+- New `test/oauth-server-url.test.mjs`: covers a path-based issuer (Appwrite), a string discovery result, the no-discovery fallback, and an invalid discovery result — asserting it never degrades to the origin
+
 ## [1.15.3] - 2026-11-18
 
 - **Supported DSH version**: **dsh `0.2.2-rc.3`**

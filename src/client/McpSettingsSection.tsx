@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import type {
-  McpManagerFailure, McpServerId, McpServerView,
+  McpManagerFailure, McpPlacement, McpPrefs, McpPrefsWrite, McpServerId, McpServerView, McpSurface,
   McpToolInjectionMode, McpToolsState, McpToolView,
 } from './types.ts'
+import { MCP_PLACEMENTS } from './types.ts'
 import type { InjectFace, PropsLocale, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
 import { McpServerForm, OAUTH_POLL_MS, type McpServerFormRemote } from './ServerForm.tsx'
 import { ServersJsonEditor, type ServersJsonEntry } from './ServersJsonEditor.tsx'
@@ -35,6 +36,20 @@ export interface McpManagerInjected extends McpServerFormRemote, McpToolControlR
   adopt: (serverName: string) => Promise<McpTakeoverOutcome>
   /** Give an adopted server back to its declaration. */
   release: (serverName: string) => Promise<McpTakeoverOutcome>
+  /** Durable prefs snapshot: placement, pins, per-server search aliases. */
+  prefs: McpPrefs
+  /** Persist and apply a new display location; null means success. */
+  setPlacement: (next: McpPlacement) => Promise<McpManagerFailure | null>
+  /** Replace the pinned-tool set. */
+  setPinned: (pins: readonly string[]) => Promise<McpPrefsWrite>
+  /** Replace the whole alias record. */
+  setAliases: (aliases: Readonly<Record<string, readonly string[]>>) => Promise<McpPrefsWrite>
+  /** Re-read the durable prefs (used on mount, so a remount never shows a stale snapshot). */
+  prefsRead: () => Promise<McpPrefs>
+  /** Which surface rendered this page. */
+  surface: McpSurface
+  /** Settings shell affordance: close the modal (settings surface only). */
+  close?: () => void
 }
 
 /** Full component props assembled by the Settings slot renderer. */
@@ -54,11 +69,76 @@ function phaseKey(phase: McpServerView['status']['phase']): McpSettingsLocaleKey
   }
 }
 
-/** Raw `mcp__<server>__<tool>` tail, for the tool list. */
-function rawOf(name: string): string {
+/** Fill `{name}` placeholders; the locale service hands back raw templates. */
+function fillTemplate(template: string, vars: Readonly<Record<string, string | number>>): string {
+  return template.replace(/\{([A-Za-z0-9_]+)\}/g, (match, name) => (
+    vars[name] === undefined ? match : String(vars[name])
+  ))
+}
+
+/** `mcp__<server>__<tool>` → the tool tail shown to a person. */
+function tailOf(name: string): string {
   const rest = name.slice(5)
-  const i = rest.indexOf('__')
-  return i < 0 ? rest : rest.slice(i + 2)
+  const index = rest.indexOf('__')
+  return index < 0 ? rest : rest.slice(index + 2)
+}
+
+/** `mcp__<server>__<tool>` → the server namespace. */
+function serverOfName(name: string): string {
+  const rest = name.slice(5)
+  const index = rest.indexOf('__')
+  return index < 0 ? rest : rest.slice(0, index)
+}
+
+/**
+ * Servers whose tool sets substantially overlap (same-family variants such as
+ * `x`, `x-prod`, `x-oauth`). Shown on the later card so an operator can see
+ * which one is redundant instead of comparing tool names by eye.
+ * @param tools - every tool row.
+ * @returns later server → the earlier server it duplicates, with the shared count.
+ */
+function findDuplicates(tools: readonly McpToolView[]): Map<string, { server: string; count: number }> {
+  const byServer = new Map<string, Set<string>>()
+  for (const tool of tools) {
+    const set = byServer.get(tool.server) ?? new Set<string>()
+    set.add(tailOf(tool.name))
+    byServer.set(tool.server, set)
+  }
+  const servers = [...byServer.keys()].sort()
+  const duplicates = new Map<string, { server: string; count: number }>()
+  for (let right = 0; right < servers.length; right += 1) {
+    const rightSet = byServer.get(servers[right]) ?? new Set<string>()
+    for (let left = 0; left < right; left += 1) {
+      const leftSet = byServer.get(servers[left]) ?? new Set<string>()
+      let shared = 0
+      for (const name of rightSet) if (leftSet.has(name)) shared += 1
+      const smaller = Math.min(rightSet.size, leftSet.size)
+      if (shared >= 3 && shared >= smaller * 0.7) {
+        duplicates.set(servers[right], { server: servers[left], count: shared })
+        break
+      }
+    }
+  }
+  return duplicates
+}
+
+/** Group pinned tool names by server, keeping the pin order inside a server. */
+function groupPins(pins: readonly string[]): Array<[string, string[]]> {
+  const groups = new Map<string, string[]>()
+  for (const name of pins) {
+    const server = serverOfName(name)
+    const bucket = groups.get(server) ?? []
+    bucket.push(name)
+    groups.set(server, bucket)
+  }
+  return [...groups.entries()].sort((left, right) => left[0].localeCompare(right[0]))
+}
+
+/** Locale key of each display-location option. */
+const PLACEMENT_LABEL_KEY: Record<McpPlacement, McpSettingsLocaleKey> = {
+  sidebar: 'placementSidebar',
+  settings: 'placementSettings',
+  both: 'placementBoth',
 }
 
 /** Rebuild an editable draft from a stored server view (quick toggle path). */
@@ -94,7 +174,15 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
   const [hostMissing, setHostMissing] = useState(false)
   const [tools, setTools] = useState<McpToolsState | null>(null)
   const [toolsError, setToolsError] = useState<string | null>(null)
+  /** Tool filter applied inside every server card (and across the list). */
+  const [toolQuery, setToolQuery] = useState('')
+  /** Show only pinned tools / servers that hold one. */
+  const [onlyPinned, setOnlyPinned] = useState(false)
+  /** Servers whose tool panel is open. */
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set())
+  /** Unsaved alias text per server. */
+  const [aliasDraft, setAliasDraft] = useState<Record<string, string>>({})
+  const [aliasBusy, setAliasBusy] = useState<ReadonlySet<string>>(new Set())
   const [refreshing, setRefreshing] = useState<ReadonlySet<string>>(new Set())
   const [jsonOpen, setJsonOpen] = useState(false)
   const [envOpen, setEnvOpen] = useState(true)
@@ -106,6 +194,10 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
   const [oauthIncomplete, setOauthIncomplete] = useState<ReadonlySet<string>>(new Set())
   const [actionError, setActionError] = useState<string | null>(null)
   const [actionNotice, setActionNotice] = useState<string | null>(null)
+  const [prefs, setPrefs] = useState<McpPrefs>(props.prefs)
+
+  const [placementSaving, setPlacementSaving] = useState(false)
+  const [placementError, setPlacementError] = useState<string | null>(null)
   const timersRef = useRef<number[]>([])
   /** Servers whose flow died (no listener, no tokens): stop polling them. */
   const oauthStoppedRef = useRef<Set<string>>(new Set())
@@ -120,6 +212,115 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
   useEffect(() => () => {
     for (const id of timersRef.current) window.clearTimeout(id)
   }, [])
+
+  // The page is re-registered after a successful switch, which remounts it with
+  // the new placement; keep the radios in step if the Host value changes
+  // without a remount.
+  useEffect(() => {
+    setPrefs(props.prefs)
+  }, [props.prefs])
+
+  // The inject face is a snapshot; after a remount (switching panels) it can be
+  // stale, which made the pinned list look like it had been lost. Re-read the
+  // durable prefs whenever the page mounts.
+  useEffect(() => {
+    let live = true
+    void props.prefsRead().then(
+      (next) => { if (live) setPrefs(next) },
+      () => {},
+    )
+    return () => { live = false }
+  }, [])
+
+  /**
+   * Persist a new display location and apply it. The Host owns the stored
+   * value: a rejected write reverts the radios instead of pretending the page
+   * moved. Leaving Settings while this section is displayed closes the modal,
+   * otherwise it would sit on a page that no longer exists.
+   */
+  const pickPlacement = (next: McpPlacement): void => {
+    if (next === prefs.placement || placementSaving) return
+    const previous = prefs.placement
+    setPrefs(current => ({ ...current, placement: next }))
+    setPlacementError(null)
+    setPlacementSaving(true)
+    void props.setPlacement(next).then(
+      (failure) => {
+        setPlacementSaving(false)
+        if (failure === null) {
+          if (next === 'sidebar' && props.surface === 'settings') props.close?.()
+          return
+        }
+        setPrefs(current => ({ ...current, placement: previous }))
+        setPlacementError(`${failure.code}: ${failure.message}`)
+      },
+      (error) => {
+        setPlacementSaving(false)
+        setPrefs(current => ({ ...current, placement: previous }))
+        setPlacementError(String((error instanceof Error ? error.message : error) ?? error))
+      },
+    )
+  }
+
+  /** Pin or unpin a set of tools; the Host returns the accepted snapshot. */
+  const applyPins = (names: readonly string[], pinned: boolean): void => {
+    const next = new Set(prefs.pins)
+    for (const name of names) {
+      if (pinned) next.add(name)
+      else next.delete(name)
+    }
+    void props.setPinned([...next]).then(
+      (result) => {
+        if (result.ok) setPrefs(result.prefs)
+        else setActionError(`${result.failure.code}: ${result.failure.message}`)
+      },
+      (error) => setActionError(String((error instanceof Error ? error.message : error) ?? error)),
+    )
+  }
+
+  /** Save the alias input of one server (comma or whitespace separated). */
+  const saveAliasInput = (server: string): void => {
+    const words = (aliasDraft[server] ?? '')
+      .split(/[,，\s]+/)
+      .map((word) => word.trim())
+      .filter((word) => word.length > 0)
+    setAliasBusy((prev) => new Set(prev).add(server))
+    void saveAliases(server, words).then(
+      (ok) => {
+        setAliasBusy((prev) => {
+          const next = new Set(prev)
+          next.delete(server)
+          return next
+        })
+        if (ok) {
+          setAliasDraft((prev) => {
+            const next = { ...prev }
+            delete next[server]
+            return next
+          })
+        }
+      },
+      () => setAliasBusy((prev) => {
+        const next = new Set(prev)
+        next.delete(server)
+        return next
+      }),
+    )
+  }
+
+  /** Persist one server's search aliases; an empty list removes the entry. */
+  const saveAliases = async (server: string, keywords: readonly string[]): Promise<boolean> => {
+    const next: Record<string, readonly string[]> = { ...prefs.aliases }
+    if (keywords.length === 0) delete next[server]
+    else next[server] = [...keywords]
+    const result = await props.setAliases(next)
+    if (result.ok) {
+      setPrefs(result.prefs)
+      return true
+    }
+    setActionError(`${result.failure.code}: ${result.failure.message}`)
+    return false
+  }
 
   const refreshTools = (): void => {
     void props.toolsList().then(
@@ -189,16 +390,64 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
     })
   }
 
-  const toggleTool = (tool: McpToolView): void => {
-    const next = !tool.enabled
-    // Optimistic local toggle; the Host is the source of truth.
+  /** Flip a set of tools locally without persisting yet (drag painting). */
+  const optimisticEnabled = (names: ReadonlySet<string>, enabled: boolean): void => {
     setTools(prev => prev === null
       ? prev
-      : { ...prev, tools: prev.tools.map(item => item.name === tool.name ? { ...item, enabled: next } : item) })
-    void props.toolsSet({ name: tool.name, enabled: next }).catch((error) => {
+      : { ...prev, tools: prev.tools.map(item => names.has(item.name) ? { ...item, enabled } : item) })
+  }
+
+  /** Persist one state for several tools in a single batch. */
+  const persistEnabled = (names: readonly string[], enabled: boolean): void => {
+    if (names.length === 0) return
+    void Promise.all(names.map((name) => props.toolsSet({ name, enabled }))).catch((error) => {
       console.error('[dsh-mcp] toolsSet failed:', error)
       refreshTools()
     })
+  }
+
+  const toggleTool = (tool: McpToolView): void => {
+    const next = !tool.enabled
+    // Optimistic local toggle; the Host is the source of truth.
+    optimisticEnabled(new Set([tool.name]), next)
+    persistEnabled([tool.name], next)
+  }
+
+  /**
+   * Pressing on a tool row and dragging across others flips every crossed row to
+   * the state of the first one. The move is batched into one toolsSet call per
+   * tool on release, not one per pointer move.
+   */
+  const paintRef = useRef<{ target: boolean; names: Set<string> } | null>(null)
+
+  useEffect(() => {
+    const stop = (): void => {
+      const paint = paintRef.current
+      paintRef.current = null
+      if (paint !== null) persistEnabled([...paint.names], paint.target)
+    }
+    window.addEventListener('pointerup', stop)
+    window.addEventListener('pointercancel', stop)
+    return () => {
+      window.removeEventListener('pointerup', stop)
+      window.removeEventListener('pointercancel', stop)
+    }
+  })
+
+  const paintStart = (tool: McpToolView, event: ReactPointerEvent<HTMLElement>): void => {
+    if (event.button !== 0) return
+    // The checkbox, the "?" and the pin keep their own click behaviour.
+    if ((event.target as HTMLElement).closest('button, input')) return
+    const target = !tool.enabled
+    paintRef.current = { target, names: new Set([tool.name]) }
+    optimisticEnabled(new Set([tool.name]), target)
+  }
+
+  const paintOver = (tool: McpToolView): void => {
+    const paint = paintRef.current
+    if (paint === null || paint.names.has(tool.name)) return
+    paint.names.add(tool.name)
+    optimisticEnabled(new Set([tool.name]), paint.target)
   }
 
   const refreshServer = (serverName: string): void => {
@@ -215,15 +464,6 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
         next.delete(serverName)
         return next
       })
-    })
-  }
-
-  const toggleExpand = (serverName: string): void => {
-    setExpanded(prev => {
-      const next = new Set(prev)
-      if (next.has(serverName)) next.delete(serverName)
-      else next.add(serverName)
-      return next
     })
   }
 
@@ -406,10 +646,46 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
     }
   }
 
-  const serverTools = (serverName: string): McpToolView[] =>
-    (tools?.tools ?? []).filter(tool => tool.server === serverName)
-
   const mode = tools?.mode ?? 'search'
+
+  /** Tools of one server, narrowed by the list's filter controls. */
+  const serverTools = (serverName: string): McpToolView[] => {
+    const needle = toolQuery.trim().toLowerCase()
+    return (tools?.tools ?? []).filter((tool) => {
+      if (tool.server !== serverName) return false
+      if (onlyPinned && !pinnedSet.has(tool.name)) return false
+      if (needle.length === 0) return true
+      const aliases = (prefs.aliases[serverName] ?? []).join(' ').toLowerCase()
+      return `${tool.name} ${tool.description} ${aliases}`.toLowerCase().includes(needle)
+    })
+  }
+
+  /** Every tool of one server, ignoring the list filters (whole-server pinning). */
+  const allToolsOf = (serverName: string): string[] =>
+    (tools?.tools ?? []).filter((tool) => tool.server === serverName).map((tool) => tool.name)
+
+  /** Whether this server already has all of its tools pinned. */
+  const allPinned = (serverName: string): boolean => {
+    const names = allToolsOf(serverName)
+    return names.length > 0 && names.every((name) => pinnedSet.has(name))
+  }
+
+  /** Whether the list is in a filtered mode (auto-expands matching cards). */
+  const filtering = toolQuery.trim().length > 0 || onlyPinned
+
+  /** Same-family servers, computed once per render (18 servers ≈ trivial). */
+  const duplicates = findDuplicates(tools?.tools ?? [])
+  /** Pinned tool names as a Set: the card rows ask per tool. */
+  const pinnedSet = new Set(prefs.pins)
+
+  const toggleExpand = (serverName: string): void => {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(serverName)) next.delete(serverName)
+      else next.add(serverName)
+      return next
+    })
+  }
 
   if (state.loadState === 'loading') {
     return <p className={css.status} aria-busy="true">{t('loading')}</p>
@@ -460,6 +736,25 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
 
   return (
     <div className={css.section}>
+      <div className={css.placementRow}>
+        <span className={css.placementLabel}>{t('placementLabel')}</span>
+        {MCP_PLACEMENTS.map(option => (
+          <label key={option} className={css.modeOption}>
+            <input
+              type="radio"
+              name="mcp-placement"
+              checked={prefs.placement === option}
+              disabled={placementSaving}
+              onChange={() => pickPlacement(option)}
+            />
+            {t(PLACEMENT_LABEL_KEY[option])}
+          </label>
+        ))}
+      </div>
+      <p className={css.modeHint}>{placementSaving ? t('placementSaving') : t('placementHint')}</p>
+      {placementError !== null
+        ? <p className={css.failure}>{t('placementFailed')}{placementError}</p>
+        : null}
       <div className={css.modeRow}>
         <span className={css.modeLabel}>{t('toolsModeLabel')}</span>
         <label className={css.modeOption}>
@@ -519,9 +814,20 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
               aria-expanded={jsonOpen}
               onClick={() => setJsonOpen(open => !open)}
             >
-              {t('serversJson')}
+              {jsonOpen ? t('serversJsonBack') : t('serversJson')}
             </button>
-            <button type="button" className={`${controls.button} ${controls.primary}`} onClick={beginCreate}>{t('addServer')}</button>
+            <button
+              type="button"
+              className={`${controls.button} ${controls.primary}`}
+              onClick={() => {
+                // The JSON panel replaces the list; starting a new server while
+                // it is open would stack the form above the editor for nothing.
+                setJsonOpen(false)
+                beginCreate()
+              }}
+            >
+              {t('addServer')}
+            </button>
           </div>
         </div>
         {actionError !== null ? (
@@ -555,11 +861,79 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
         {jsonOpen ? null : state.servers.length === 0 ? (
           <p className={css.status}>{t('empty')}</p>
         ) : (
+        <>
+        <div className={css.listControls}>
+          <input
+            className={css.toolSearch}
+            type="search"
+            value={toolQuery}
+            placeholder={t('listSearch')}
+            onChange={(event) => setToolQuery(event.target.value)}
+          />
+          <label className={css.pinToggle}>
+            <input
+              type="checkbox"
+              checked={onlyPinned}
+              onChange={(event) => setOnlyPinned(event.target.checked)}
+            />
+            {t('onlyPinned')} {prefs.pins.length > 0 ? `(${prefs.pins.length})` : ''}
+          </label>
+        </div>
+        <p className={css.modeHint}>{t('pinExplainer')}</p>
+        {prefs.pins.length > 0 ? (
+          <div className={css.pinnedBlock}>
+            <div className={css.pinnedHeader}>
+              <span className={css.pinnedTitle}>{fillTemplate(t('pinnedTitle'), { count: prefs.pins.length })}</span>
+              <button
+                type="button"
+                className={controls.button}
+                onClick={() => applyPins(prefs.pins, false)}
+              >
+                {t('pinnedClearAll')}
+              </button>
+            </div>
+            <div className={css.pinnedGroups}>
+              {groupPins(prefs.pins).map(([server, names]) => (
+                <div key={server} className={css.pinnedGroup}>
+                  <span className={css.pinnedServer}>{server}</span>
+                  <span className={css.pinnedChips}>
+                    {names.map((name) => (
+                      <span key={name} className={css.pinnedChip}>
+                        {tailOf(name)}
+                        <button
+                          type="button"
+                          className={`${controls.button} ${css.pinnedRemove}`}
+                          title={t('pinTooltipUnpin')}
+                          aria-label={t('pinTooltipUnpin')}
+                          onClick={() => applyPins([name], false)}
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    ))}
+                  </span>
+                  <button
+                    type="button"
+                    className={`${controls.button} ${css.pinnedGroupClear}`}
+                    title={t('pinnedGroupClearHint')}
+                    onClick={() => applyPins(names, false)}
+                  >
+                    {t('pinnedGroupClear')}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
         <ul className={css.list}>
           {state.servers.flatMap(server => {
-            const isExpanded = expanded.has(server.serverName)
             const isRefreshing = refreshing.has(server.serverName)
             const serverToolList = serverTools(server.serverName)
+            // A filter narrows the whole list: hide servers with no match and
+            // open the ones that do, so a search never hides its own result.
+            if (filtering && serverToolList.length === 0) return []
+            const isExpanded = expanded.has(server.serverName) || filtering
+            const duplicate = duplicates.get(server.serverName)
             // Declared servers are mounted by the composition, so this page
             // only views them: no enable/disable, no refresh, no editor.
             const declared = server.source === 'cordis'
@@ -617,6 +991,11 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
                       <span>{server.transport}</span>
                       <span>{t('toolCount')}: {server.status.tools.length}</span>
                       <span>{t('envVars')}: {server.env.length}</span>
+                      {duplicate === undefined ? null : (
+                        <span className={css.duplicateHint}>
+                          {fillTemplate(t('duplicateBadge'), { server: duplicate.server, count: duplicate.count })}
+                        </span>
+                      )}
                     </div>
                     {server.declaredIn ? (
                       <p className={css.path} title={server.declaredIn}>{t('declaredIn')}: {server.declaredIn}</p>
@@ -655,7 +1034,14 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
                   </div>
                   <div className={css.rowActions}>
                     {declared || server.conflict || server.pendingTakeover ? null : (
-                      <button type="button" className={controls.button} disabled={isRefreshing} onClick={() => void toggleEnabled(server)}>
+                      <button
+                        type="button"
+                        // Stopping a running server is destructive-ish: it drops its
+                        // tools from the model, so it carries the error color.
+                        className={server.enabled ? `${controls.button} ${css.dangerButton}` : controls.button}
+                        disabled={isRefreshing}
+                        onClick={() => void toggleEnabled(server)}
+                      >
                         {server.enabled ? t('disable') : t('enabled')}
                       </button>
                     )}
@@ -688,44 +1074,107 @@ export function McpSettingsSection(props: McpSettingsSectionProps): ReactNode {
                         {adopting.has(server.serverName) ? t('releasing') : t('release')}
                       </button>
                     ) : null}
-                    <button type="button" className={controls.button} onClick={() => toggleExpand(server.serverName)}>
-                      {isExpanded ? t('toolsCollapse') : t('toolsExpand')}
-                    </button>
+                    {filtering ? null : (
+                      <button type="button" className={controls.button} onClick={() => toggleExpand(server.serverName)}>
+                        {isExpanded ? t('toolsCollapse') : t('toolsExpand')}
+                      </button>
+                    )}
                     {declared ? null : <button type="button" className={controls.button} onClick={() => beginEdit(server)}>{t('edit')}</button>}
                   </div>
                 </div>
                 {isExpanded ? (
                   <div className={css.toolPanel}>
+                    <div className={css.aliasRow}>
+                      <span className={css.aliasLabel}>{t('aliasLabel')}</span>
+                      <input
+                        className={css.aliasInput}
+                        value={aliasDraft[server.serverName] ?? (prefs.aliases[server.serverName] ?? []).join(',')}
+                        placeholder={t('aliasPlaceholder')}
+                        title={t('aliasHint')}
+                        onChange={(event) => setAliasDraft((prev) => ({ ...prev, [server.serverName]: event.target.value }))}
+                        onBlur={() => {
+                          // Auto-save: a lone 保存 button here read as "save what?",
+                          // and the field is the only thing in this row that edits.
+                          if (aliasDraft[server.serverName] !== undefined) saveAliasInput(server.serverName)
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') saveAliasInput(server.serverName)
+                        }}
+                      />
+                      {aliasBusy.has(server.serverName)
+                        ? <span className={css.aliasStatus}>{t('aliasSaving')}</span>
+                        : null}
+                      <button
+                        type="button"
+                        className={`${controls.button} ${css.pinAll}`}
+                        onClick={() => applyPins(allToolsOf(server.serverName), !allPinned(server.serverName))}
+                        title={t('pinAllHint')}
+                      >
+                        {allPinned(server.serverName)
+                          ? t('pinAllOff')
+                          : fillTemplate(t('pinAllOn'), { count: allToolsOf(server.serverName).length })}
+                      </button>
+                    </div>
                     {tools === null ? (
                       <p className={css.muted}>{toolsError ?? t('toolsLoading')}</p>
                     ) : serverToolList.length === 0 ? (
-                      <p className={css.muted}>{t('toolsEmpty')}</p>
+                      <p className={css.muted}>{filtering ? t('toolsEmptyFiltered') : t('toolsEmpty')}</p>
                     ) : (
-                      <div className={css.toolGrid}>
-                        {serverToolList.map(tool => (
-                          <label key={tool.name} className={css.toolRow} title={tool.name}>
-                            <input
-                              type="checkbox"
-                              checked={tool.enabled}
-                              onChange={() => toggleTool(tool)}
-                            />
-                            <span className={css.toolName}>{rawOf(tool.name)}</span>
-                          </label>
-                        ))}
-                      </div>
+                      <ul className={css.toolList}>
+                        {serverToolList.map(tool => {
+                          const isPinned = pinnedSet.has(tool.name)
+                          return (
+                            <li
+                              key={tool.name}
+                              className={tool.enabled ? css.toolRow : `${css.toolRow} ${css.toolRowOff}`}
+                              onPointerDown={(event) => paintStart(tool, event)}
+                              onPointerEnter={() => paintOver(tool)}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={tool.enabled}
+                                title={t('toolEnableHint')}
+                                aria-label={`${tool.name} ${t('toolEnableHint')}`}
+                                onChange={() => toggleTool(tool)}
+                              />
+                              <span className={css.toolName} title={tool.name}>{tailOf(tool.name)}</span>
+                              <span className={css.helpWrap}>
+                                <button
+                                  type="button"
+                                  className={`${controls.button} ${css.helpButton}`}
+                                  aria-label={t('descHelp')}
+                                >
+                                  ?
+                                </button>
+                                <span className={css.helpTip} role="tooltip">{tool.description}</span>
+                              </span>
+                              <button
+                                type="button"
+                                className={isPinned ? `${controls.button} ${css.pinOn}` : `${controls.button} ${css.pinOff}`}
+                                aria-pressed={isPinned}
+                                onClick={() => applyPins([tool.name], !isPinned)}
+                              >
+                                {isPinned ? t('pinActionOn') : t('pinActionOff')}
+                              </button>
+                            </li>
+                          )
+                        })}
+                      </ul>
                     )}
                   </div>
                 ) : null}
               </li>
             )
-            // Editing this server: expand the form right below its row so the
-            // user never has to scroll away to find it.
+            // Editing this server: the form REPLACES the row, in the same slot.
+            // Rendering both left the old card (with its 禁用/刷新/编辑 buttons)
+            // stacked above the editor, which read as two different servers.
             if (state.draft !== null && state.draft.id === server.id) {
-              return [card, <li key={`${server.id}-form`} className={css.inlineFormItem}>{inlineForm}</li>]
+              return [<li key={`${server.id}-form`} className={css.inlineFormItem}>{inlineForm}</li>]
             }
             return [card]
           })}
         </ul>
+        </>
       )}
       </div>
     </div>

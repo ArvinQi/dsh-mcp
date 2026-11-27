@@ -244,11 +244,10 @@
 }
 
 .rowActions {
-  display: flex;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   flex: none;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
   margin-left: auto;
 }
 
@@ -265,6 +264,25 @@
   border: 0;
   border-radius: 0;
   background: transparent;
+}
+
+/* Display-location picker: the same chip language as the injection-mode row,
+   kept separate so both can sit at the top of the page without one style
+   overriding the other. */
+.placementRow {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  padding: 8px 14px;
+  background: var(--dsw-alias-bg-layer-3);
+  font-size: 13px;
+}
+
+.placementLabel {
+  font-weight: 600;
 }
 
 .modeRow {
@@ -298,32 +316,350 @@
   line-height: 18px;
 }
 
+/* --- list controls: search + pinned filter ------------------------------- */
+
+.listControls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.toolSearch {
+  flex: 1 1 260px;
+  min-width: 200px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+}
+
+.pinToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* --- pinned-tool strip --------------------------------------------------- */
+
+.pinnedBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, #2f6fed 45%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, #2f6fed 6%, transparent);
+}
+
+.pinnedTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1f63d6;
+}
+
+
+
+
+
+
+
+/* --- per-server tool panel ---------------------------------------------- */
+
 .toolPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   border-top: 1px solid var(--dsw-alias-border-l2);
   padding: 10px 14px;
 }
 
-.toolGrid {
+.aliasRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.aliasLabel {
+  font-size: 12px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.aliasInput {
+  flex: 1 1 220px;
+  min-width: 160px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+}
+
+.toolList {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 4px 14px;
-  max-height: 320px;
-  overflow-y: auto;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .toolRow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   min-width: 0;
-  padding: 2px 0;
-  font-size: 12px;
-  line-height: 18px;
+  padding: 3px 4px;
+  border-radius: 6px;
+  font-size: 12.5px;
   cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+/* Disabled tools stay listed but read as "off" at a glance. */
+.toolRowOff .toolName {
+  color: var(--dsw-alias-label-tertiary);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--dsw-alias-label-tertiary) 60%, transparent);
+}
+
+.toolRow:hover {
+  background: var(--dsw-alias-bg-layer-2);
 }
 
 .toolName {
+  flex: 0 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 12.5px;
+  font-family: var(--dsw-alias-font-family-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+}
+
+/* Hover/focus popup: the row stays one line, the full description is one
+   hover away. A CSS popup rather than a native `title` so it appears
+   immediately and can wrap long English descriptions. */
+.helpWrap {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+}
+
+.helpTip {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 40;
+  width: max-content;
+  max-width: 300px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 8px 10px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-overlay);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  text-align: left;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.helpWrap:hover .helpTip,
+.helpWrap:focus-within .helpTip {
+  display: block;
+}
+
+
+
+.duplicateHint {
+  color: var(--dsw-alias-state-warning-primary, var(--dsw-alias-state-error-primary));
+}
+
+
+
+/* Question-mark affordance: the row truncates a long tool description, this
+   shows the whole text on hover (and on focus, via the native title). */
+.helpButton {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 50%;
+  background: var(--dsw-alias-bg-layer-2) !important;
+  font-size: 10.5px;
+  line-height: 16px;
+  text-align: center;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.helpButton:hover {
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-bg-layer-2) !important;
+}
+
+/* The tool row's action column: one icon when unpinned, a pill once pinned.
+   Grouped at the right so the eye reads "name … actions" instead of a lone
+   glyph floating at the far edge. */
+
+
+.pinGhost:hover {
+  border-color: var(--dsw-alias-border-l2) !important;
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-bg-layer-2) !important;
+}
+
+
+.pinPill .pinGlyph {
+  margin-right: 4px;
+  filter: none;
+  opacity: 1;
+}
+
+.pinAll {
+  margin-left: auto;
+  font-size: 12px;
+}
+
+.aliasStatus {
+  font-size: 11.5px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.pinnedHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Pinned tools: one line per server, chips that hug their content — no repeated
+   server column and no stretched rows. */
+.pinnedGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 190px;
+  overflow-y: auto;
+}
+
+.pinnedGroup {
+  display: grid;
+  grid-template-columns: minmax(96px, 150px) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+}
+
+/* One "unpin all of this server" per group: bulk actions belong to the MCP
+   they affect, not only to the whole list. */
+.pinnedGroupClear {
+  padding: 0 6px !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11.5px;
+  line-height: 18px;
+}
+
+.pinnedGroupClear:hover {
+  color: var(--dsw-alias-state-error-primary);
+  border-color: var(--dsw-alias-border-l2) !important;
+}
+
+.pinnedServer {
+  padding-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11.5px;
+}
+
+.pinnedChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.pinnedChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 2px 1px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, #2f6fed 40%, transparent);
+  background: color-mix(in srgb, #2f6fed 12%, transparent);
+  color: #1f63d6;
+  font-size: 11.5px;
+  line-height: 18px;
+  font-family: var(--dsw-alias-font-family-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+}
+
+.pinnedRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  opacity: 0.6;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.pinnedRemove:hover {
+  opacity: 1;
+}
+
+/* Pin control is text, not a lone glyph: both states are >= 44px wide and the
+   hit area matches what is drawn, which the 28px icon never did. */
+.pinOff {
+  flex: none;
+  padding: 0 6px !important;
+  border: 1px solid var(--dsw-alias-border-l2) !important;
+  border-radius: 4px;
+  background: transparent !important;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11.5px;
+  line-height: 18px;
+}
+
+.pinOff:hover {
+  color: var(--dsw-alias-brand-primary);
+  background: var(--dsw-alias-bg-layer-2) !important;
+  border-radius: 4px;
+}
+
+.pinOn {
+  flex: none;
+  padding: 0 8px !important;
+  border: 1px solid color-mix(in srgb, #2f6fed 45%, transparent) !important;
+  border-radius: 999px;
+  background: color-mix(in srgb, #2f6fed 12%, transparent) !important;
+  color: #1f63d6;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 18px;
 }

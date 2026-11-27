@@ -47,6 +47,24 @@ test("search mode admits only the hot set, and never a switched-off tool", () =>
 	assert.equal(shouldAdmitTool("mcp__a__off", s), false, "an explicit switch always wins over the hot set");
 });
 
+test("pinned tools stay admitted in search mode without being hot", () => {
+	// The operator's "always visible" list: a fresh Session should not have to
+	// search for the tools it uses every day.
+	const pinned = new Set(["mcp__gitlab-mcp__create_merge_request"]);
+	assert.equal(shouldAdmitTool("mcp__gitlab-mcp__create_merge_request", state({ pinned })), true);
+	assert.equal(shouldAdmitTool("mcp__gitlab-mcp__list_pipelines", state({ pinned })), false);
+});
+
+test("a switched-off tool is not admitted even when pinned", () => {
+	const pinned = new Set(["mcp__gitlab-mcp__create_merge_request"]);
+	const toolSwitches = new Map([["mcp__gitlab-mcp__create_merge_request", false]]);
+	assert.equal(
+		shouldAdmitTool("mcp__gitlab-mcp__create_merge_request", state({ pinned, toolSwitches })),
+		false,
+		"pinning must not resurrect a disabled tool",
+	);
+});
+
 test("full mode admits every tool that is not switched off", () => {
 	const switches = new Map([["mcp__a__off", false]]);
 	const s = state({ toolMode: "full", toolSwitches: switches });

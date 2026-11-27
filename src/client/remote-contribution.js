@@ -465,6 +465,32 @@ const _deepseek_ai_dsh_mcp_manager_mcpManager_oauthStatus_result$schema = z.unio
 }).readonly(),
 })])
 
+
+const _uiPrefsPlacementSchema = z.union([z.literal("sidebar"), z.literal("settings"), z.literal("both")])
+const _deepseek_ai_dsh_mcp_manager_mcpManager_uiPrefs_result$schema = z.object({
+  'ok': z.literal(true).readonly(),
+  'placement': _uiPrefsPlacementSchema.readonly(),
+  'pins': z.array(z.string()).readonly(),
+  'aliases': z.record(z.string(), z.array(z.string())).readonly(),
+})
+const _deepseek_ai_dsh_mcp_manager_mcpManager_uiPrefsPatch_parameter_0$schema = z.object({
+  'placement': _uiPrefsPlacementSchema.readonly().optional(),
+  'pins': z.array(z.string()).readonly().optional(),
+  'aliases': z.record(z.string(), z.array(z.string())).readonly().optional(),
+})
+const _deepseek_ai_dsh_mcp_manager_mcpManager_uiPrefsPatch_result$schema = z.union([z.object({
+  'ok': z.literal(true).readonly(),
+  'placement': _uiPrefsPlacementSchema.readonly(),
+  'pins': z.array(z.string()).readonly(),
+  'aliases': z.record(z.string(), z.array(z.string())).readonly(),
+}), z.object({
+  'ok': z.literal(false).readonly(),
+  'error': z.object({
+  'code': z.union([z.literal("MCP_INVALID_SPEC"), z.literal("MCP_PREFS_UNAVAILABLE")]).readonly(),
+  'message': z.string().readonly(),
+}).readonly(),
+})])
+
 export const TYPERT_REMOTE = {
   package: 'dsh-mcp',
   descriptors: [
@@ -810,6 +836,49 @@ export const TYPERT_REMOTE = {
         typeSymbol: 'dsh-mcp/types#McpManagerOAuthStatusResult',
         schema: _deepseek_ai_dsh_mcp_manager_mcpManager_oauthStatus_result$schema,
         create: () => _deepseek_ai_dsh_mcp_manager_mcpManager_oauthStatus_result$schema,
+      },
+      sourceLocation: {"file":"lib/index.js"},
+    },
+    {
+      id: 'dsh-mcp#mcpManager/uiPrefs',
+      service: 'dshMcpManager',
+      namespace: 'mcpManager',
+      method: 'uiPrefs',
+      invocation: { kind: 'direct' },
+      parameters: [
+      ],
+      result: {
+        mode: 'strict',
+        typeSymbol: 'dsh-mcp/types#McpManagerUiPrefsResult',
+        schema: _deepseek_ai_dsh_mcp_manager_mcpManager_uiPrefs_result$schema,
+        create: () => _deepseek_ai_dsh_mcp_manager_mcpManager_uiPrefs_result$schema,
+      },
+      sourceLocation: {"file":"lib/index.js"},
+    },
+    {
+      id: 'dsh-mcp#mcpManager/uiPrefsPatch',
+      service: 'dshMcpManager',
+      namespace: 'mcpManager',
+      method: 'uiPrefsPatch',
+      invocation: { kind: 'direct' },
+      parameters: [
+        {
+          name: 'request',
+          wire: 'request',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: 'dsh-mcp/types#McpManagerUiPrefsPatchRequest',
+            schema: _deepseek_ai_dsh_mcp_manager_mcpManager_uiPrefsPatch_parameter_0$schema,
+            create: () => _deepseek_ai_dsh_mcp_manager_mcpManager_uiPrefsPatch_parameter_0$schema,
+          },
+        },
+      ],
+      result: {
+        mode: 'strict',
+        typeSymbol: 'dsh-mcp/types#McpManagerUiPrefsPatchResult',
+        schema: _deepseek_ai_dsh_mcp_manager_mcpManager_uiPrefsPatch_result$schema,
+        create: () => _deepseek_ai_dsh_mcp_manager_mcpManager_uiPrefsPatch_result$schema,
       },
       sourceLocation: {"file":"lib/index.js"},
     },

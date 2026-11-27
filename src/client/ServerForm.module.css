@@ -1,7 +1,7 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   width: 100%;
   max-width: 760px;
   color: var(--dsw-alias-label-primary);
@@ -105,4 +105,56 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+/* Short connection fields share a row; long ones (URL / headers / args) stay
+   full width so they never turn into a two-column form. */
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.titleName {
+  font-weight: 400;
+  color: var(--dsw-alias-label-tertiary);
+  font-family: var(--dsw-alias-font-family-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+}
+
+/* Behavior switches, grouped so they do not read as more input fields. */
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--dsw-alias-bg-layer-2);
+}
+
+.optionsTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* Keep the save row reachable in a long form without a second scroll box. */
+.actions {
+  position: sticky;
+  bottom: 0;
+  padding: 8px 0 2px;
+  background: linear-gradient(to top, var(--dsw-alias-bg-layer-3) 70%, transparent);
+}
+
+.fieldError {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-state-error-primary);
+}
+
+/* Destructive action sits alone on the left of the footer — never under the
+   cursor that just clicked 编辑 on the row above. */
+.deleteAction {
+  margin-right: auto;
 }

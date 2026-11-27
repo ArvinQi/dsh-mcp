@@ -68,6 +68,12 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
   const injectedRef = useRef(injected)
   injectedRef.current = injected
 
+  const [nameTouched, setNameTouched] = useState(false)
+  // Switching between "new" and a concrete server is a different form.
+  useEffect(() => {
+    setNameTouched(false)
+  }, [draft.id])
+
   const update = (patch: Partial<McpDraft>): void => {
     setSaveError(null)
     actions.updateDraft(patch)
@@ -128,6 +134,11 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
   }
 
   const submit = async (): Promise<void> => {
+    if (!/^[A-Za-z0-9_-]{1,32}$/.test(draft.serverName.trim())) {
+      setNameTouched(true)
+      setSaveError(null)
+      return
+    }
     setSaveError(null)
     actions.setBusy('save')
     try {
@@ -187,6 +198,11 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
     }
   }
 
+  // The Host enforces this pattern anyway; checking it here turns a failed
+  // save into an immediate hint under the field. The hint only turns red once
+  // the field was edited or Save was pressed — an untouched new form is not an
+  // error state.
+  const nameValid = /^[A-Za-z0-9_-]{1,32}$/.test(draft.serverName.trim())
   const stdio = draft.transport === 'stdio'
   const probe = test?.probe
   return (
@@ -197,41 +213,46 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
     // `MCP_INVALID_SPEC` with a localized message.
     <form className={css.form} noValidate onSubmit={(event) => { event.preventDefault(); void submit() }}>
       <div className={css.titleRow}>
-        <h3 className={css.title}>{draft.id === null ? t('newTitle') : t('editTitle')}</h3>
-        <div className={css.titleActions}>
-          <button type="button" className={controls.button} onClick={() => actions.cancelEdit()}>{t('backToList')}</button>
-          {draft.id !== null ? (
-            <button type="button" className={`${controls.button} ${css.danger}`} disabled={busy !== null} onClick={() => void removeServer()}>
-              {busy === 'remove' ? t('removing') : t('remove')}
-            </button>
-          ) : null}
-        </div>
+        <h3 className={css.title}>
+          {draft.id === null ? t('newTitle') : t('editTitle')}
+          {draft.id === null || draft.serverName.trim().length === 0
+            ? null
+            : <span className={css.titleName}> · {draft.serverName}</span>}
+        </h3>
       </div>
 
       {saveError !== null ? <p className={css.error} role="alert">{saveError}</p> : null}
 
-      <label className={css.field}>
-        <span>{t('serverName')}</span>
-        <input
-          type="text"
-          className={controls.control}
-          value={draft.serverName}
-          placeholder={t('serverNameHint')}
-          onChange={(event) => update({ serverName: event.currentTarget.value })}
-        />
-      </label>
+      <div className={css.grid2}>
+        <label className={css.field}>
+          <span>{t('serverName')}</span>
+          <input
+            type="text"
+            className={controls.control}
+            value={draft.serverName}
+            placeholder={t('serverNamePlaceholder')}
+            autoFocus={draft.id === null}
+            aria-invalid={nameTouched && !nameValid}
+            onChange={(event) => {
+              setNameTouched(true)
+              update({ serverName: event.currentTarget.value })
+            }}
+          />
+          <span className={nameTouched && !nameValid ? css.fieldError : css.muted}>{t('serverNameHint')}</span>
+        </label>
 
-      <label className={css.field}>
-        <span>{t('transport')}</span>
-        <select
-          className={controls.control}
-          value={draft.transport}
-          onChange={(event) => update({ transport: event.currentTarget.value as McpDraft['transport'] })}
-        >
-          <option value="stdio">{t('transportStdio')}</option>
-          <option value="streamable-http">{t('transportHttp')}</option>
-        </select>
-      </label>
+        <label className={css.field}>
+          <span>{t('transport')}</span>
+          <select
+            className={controls.control}
+            value={draft.transport}
+            onChange={(event) => update({ transport: event.currentTarget.value as McpDraft['transport'] })}
+          >
+            <option value="stdio">{t('transportStdio')}</option>
+            <option value="streamable-http">{t('transportHttp')}</option>
+          </select>
+        </label>
+      </div>
 
       {stdio ? (
         <>
@@ -298,50 +319,41 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
         </>
       )}
 
-      <label className={css.field}>
-        <span>{t('toolCallTimeoutMs')}</span>
-        <input
-          type="number"
-          className={controls.control}
-          min={1}
-          value={draft.toolCallTimeoutMs}
-          onChange={(event) => update({ toolCallTimeoutMs: event.currentTarget.value })}
-        />
-      </label>
 
-      <label className={css.checkRow}>
-        <input
-          type="checkbox"
-          checked={draft.oauth}
-          onChange={(event) => update({ oauth: event.currentTarget.checked })}
-        />
-        {t('oauthAuth')}
-      </label>
-      <p className={css.hint}>{t('oauthAuthHint')}</p>
+      <div className={css.options}>
+        <span className={css.optionsTitle}>{t('optionsTitle')}</span>
+        <label className={css.checkRow}>
+          <input
+            type="checkbox"
+            checked={draft.enabled}
+            onChange={(event) => update({ enabled: event.currentTarget.checked })}
+          />
+          {t('enabled')}
+        </label>
+        <label className={css.checkRow}>
+          <input
+            type="checkbox"
+            checked={draft.failOnStartupError}
+            onChange={(event) => update({ failOnStartupError: event.currentTarget.checked })}
+          />
+          {t('failOnStartupError')}
+        </label>
+        <label className={css.checkRow}>
+          <input
+            type="checkbox"
+            checked={draft.oauth}
+            onChange={(event) => update({ oauth: event.currentTarget.checked })}
+          />
+          {t('oauthAuth')}
+        </label>
+        <p className={css.hint}>{t('oauthAuthHint')}</p>
 
-      {draft.oauth && !stdio && oauthPhase !== 'idle' ? (
-        <p className={oauthPhase === 'authorized' ? css.oauthOk : css.oauthWaiting} role="status">
-          {oauthPhase === 'authorized' ? t('oauthAuthorized') : t('oauthWaiting')}
-        </p>
-      ) : null}
-
-      <label className={css.checkRow}>
-        <input
-          type="checkbox"
-          checked={draft.failOnStartupError}
-          onChange={(event) => update({ failOnStartupError: event.currentTarget.checked })}
-        />
-        {t('failOnStartupError')}
-      </label>
-
-      <label className={css.checkRow}>
-        <input
-          type="checkbox"
-          checked={draft.enabled}
-          onChange={(event) => update({ enabled: event.currentTarget.checked })}
-        />
-        {t('enabled')}
-      </label>
+        {draft.oauth && !stdio && oauthPhase !== 'idle' ? (
+          <p className={oauthPhase === 'authorized' ? css.oauthOk : css.oauthWaiting} role="status">
+            {oauthPhase === 'authorized' ? t('oauthAuthorized') : t('oauthWaiting')}
+          </p>
+        ) : null}
+      </div>
 
       {test !== null ? (
         probe !== undefined && !probe.ok && probe.oauthRequired === true ? (
@@ -363,7 +375,30 @@ export function McpServerForm(props: McpServerFormProps): ReactNode {
         <p className={css.muted} role="status">{t('testBrowserHint')}</p>
       ) : null}
 
+      <div className={css.grid2}>
+        <label className={css.field}>
+          <span>{t('toolCallTimeoutMs')}</span>
+          <input
+            type="number"
+            className={controls.control}
+            min={1}
+            value={draft.toolCallTimeoutMs}
+            onChange={(event) => update({ toolCallTimeoutMs: event.currentTarget.value })}
+          />
+        </label>
+      </div>
+
       <div className={css.actions}>
+        {draft.id === null ? null : (
+          <button
+            type="button"
+            className={`${controls.button} ${css.danger} ${css.deleteAction}`}
+            disabled={busy !== null}
+            onClick={() => void removeServer()}
+          >
+            {busy === 'remove' ? t('removing') : t('remove')}
+          </button>
+        )}
         <button type="button" className={controls.button} disabled={testRunning || busy !== null} onClick={() => void runTest()}>
           {testRunning ? t('testRunning') : t('test')}
         </button>

@@ -190,6 +190,37 @@ export type McpManagerFailureCode =
   | 'MCP_OAUTH_INVALID'
   /** Discovery/registration or the loopback callback could not be started. */
   | 'MCP_OAUTH_START_FAILED'
+  /** The UI-placement preference could not be persisted. */
+  | 'MCP_PREFS_UNAVAILABLE'
+
+/** Where the management page is displayed: the left rail, the Settings page, or both. */
+export type McpPlacement = 'sidebar' | 'settings' | 'both'
+
+/** Every accepted placement, in the order the picker lists them. */
+export const MCP_PLACEMENTS: readonly McpPlacement[] = ['sidebar', 'settings', 'both']
+
+/** Narrow an arbitrary value to a {@link McpPlacement}. */
+export function isMcpPlacement(value: unknown): value is McpPlacement {
+  return value === 'sidebar' || value === 'settings' || value === 'both'
+}
+
+/** Which surface rendered the management page. */
+export type McpSurface = 'settings' | 'panel'
+
+/** Durable UI preferences the Host owns and the page mirrors. */
+export interface McpPrefs {
+  /** Where the management page is displayed. */
+  readonly placement: McpPlacement
+  /** Public tool names (`mcp__server__tool`) that stay resident in `search` mode. */
+  readonly pins: readonly string[]
+  /** Per-server search keywords, keyed by serverName. */
+  readonly aliases: Readonly<Record<string, readonly string[]>>
+}
+
+/** Outcome of a prefs write: the accepted snapshot, or the business failure. */
+export type McpPrefsWrite =
+  | { readonly ok: true; readonly prefs: McpPrefs }
+  | { readonly ok: false; readonly failure: McpManagerFailure }
 
 /** Explicit business failure of one management operation. */
 export interface McpManagerFailure {

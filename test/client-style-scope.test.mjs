@@ -186,27 +186,49 @@ test("shared control classes are defined once and injected first", () => {
 	assert.ok(controlsIndex >= 0, "controls.module.css is injected");
 	assert.equal(controlsIndex, 0, "controls.module.css is injected before the component sheets");
 
-	// With an identity class map, re-defining a shared class in a component
-	// sheet would silently change every control using it.
+	// Each module namespaces its classes (`<Module>__<class>`), so re-defining a
+	// shared control in a component sheet would be a different selector — this
+	// checks the namespacing itself did not regress.
+	const scoped = (name) => `.controls__${name}`;
 	for (const name of SHARED_CLASSES) {
 		const definitions = [];
 		for (const style of styles) {
 			const file = style.attributes["data-file"];
 			for (const { selector } of rulesOf(style.textContent)) {
-				if (selector === `.${name}`) definitions.push(file);
+				if (selector === scoped(name)) definitions.push(file);
 			}
 		}
-		assert.deepEqual(definitions, ["controls.module.css"], `.${name} must be defined only in controls.module.css`);
+		assert.deepEqual(definitions, ["controls.module.css"], `${scoped(name)} must be defined only in controls.module.css`);
 	}
 
 	// The shared classes have equal specificity, so their order in that one
 	// sheet is what keeps the base rule from overriding a variant.
 	const controls = styles[controlsIndex].textContent;
 	const order = (selector) => rulesOf(controls).findIndex((rule) => rule.selector === selector);
-	assert.ok(order(".button") < order(".buttonSmall"), ".buttonSmall must override .button");
-	assert.ok(order(".button") < order(".primary"), ".primary must override .button");
-	assert.ok(order(".button:hover") < order(".primary:hover"), ".primary:hover must override .button:hover");
-	assert.ok(order(".control") < order(".controlMono"), ".controlMono must override .control");
+	assert.ok(order(scoped("button")) < order(scoped("buttonSmall")), ".buttonSmall must override .button");
+	assert.ok(order(".controls__button") < order(".controls__primary"), ".primary must override .button");
+	assert.ok(order(".controls__button:hover") < order(".controls__primary:hover"), ".primary:hover must override .button:hover");
+	assert.ok(order(".controls__control") < order(".controls__controlMono"), ".controlMono must override .control");
+});
+
+test("no two stylesheets define the same selector", () => {
+	// Every sheet is injected into the host page globally. Two modules sharing a
+	// selector (`.row`, `.muted`, `.panel` …) means the later sheet silently
+	// restyles the other component — that is how the process-env editor's grid
+	// turned into stacked bordered boxes. Namespacing happens in the build;
+	// this guards it.
+	const styles = injectedStyles();
+	const owners = new Map();
+	const clashes = [];
+	for (const style of styles) {
+		const file = style.attributes["data-file"];
+		for (const { selector } of rulesOf(style.textContent)) {
+			const owner = owners.get(selector);
+			if (owner === undefined) owners.set(selector, file);
+			else if (owner !== file) clashes.push(`${selector} (${owner} + ${file})`);
+		}
+	}
+	assert.deepEqual(clashes, [], "a shared selector couples two components");
 });
 
 test("every client button carries the shared button class", () => {

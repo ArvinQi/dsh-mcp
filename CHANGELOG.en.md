@@ -12,6 +12,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Supported DSH version**: **dsh `0.2.2-rc.3`** — the latest release is developed and verified on `0.2.2-rc.3` (declared in `package.json` → `dsh.supported`); older entries state the version verified at their time. When the DSH and plugin versions do not match, the Settings page reports a diagnosis (check whether the bundle is selected → restart `dsh web` → hard-refresh → upgrade both sides).
 - **Release convention**: every version entry states `- **Supported DSH version**: dsh <version>`, mirrored in the GitHub Release notes. The release body is written in **Chinese** (matching [CHANGELOG.md](CHANGELOG.md)), with heading levels mirroring the entry.
 
+## [1.16.0] - 2026-11-27
+
+- **Supported DSH**: **`0.2.2-rc.3`** (developed and verified on `0.2.2-rc.5`)
+
+### Added
+
+- **Choose where the page lives: sidebar / Settings / both.** The "Show in" picker at the top of the page applies immediately — the rail icon and the Settings entry are added/removed on the fly while servers, OAuth state and per-tool switches stay untouched.
+  - Default is **sidebar** (`placement: "sidebar"`): the rail icon opens the full page, with its own title, padding and scroll area.
+  - Choosing **Settings** removes the rail entry (if you are sitting on that panel it returns you to the conversation); choosing **both** keeps both entries.
+  - The choice is persisted by the Host (storage domain `mcp_ui` → table `prefs` → row `view`) and survives restarts; `config.placement` in `cordis.patch.yml` sets the first-run default.
+  - New Remote endpoints `mcpManager/uiPrefs` and `mcpManager/uiPrefsSet`, plus the `McpPage` / `McpIcon` renderers in `lib/client.js`.
+- **Pinned (resident) tools**: pin the tools you use daily and they stay in the model's tool set even in `search` mode — no "search first" round-trip in a fresh Session. Pins are persisted in `mcp_ui` and read from an in-memory mirror each model step; **a switched-off tool never comes back just because it is pinned**.
+  - The "Pinned tools" block groups by server with content-sized chips: remove one, **unpin a whole MCP** (other servers untouched), or clear everything; "Pinned only" narrows the list.
+- **`mcp_tool_search` upgrades**:
+  - New `server` (search within one server) and `list` (names + one-line descriptions only, token-cheap) parameters; without `query` it returns the list.
+  - **Chinese search**: queries are expanded into 2-grams (`提交代码` hits both `提交` and `代码`), instead of one opaque token that never matched.
+  - **Per-server aliases**: each server can carry its own words (e.g. `提交, MR, 评审`) which participate in scoring.
+- **`/mcp` command** (enabled when the core provides the commands service, skipped otherwise): `/mcp` for status, `/mcp on|off <server>`, `/mcp mode search|full`, `/mcp pin|unpin <mcp__server__tool or server>`.
+- **Bulk selection inside the tool list**: clicking a tool name (or the row's empty area) toggles whether that tool is injected; **press and drag across rows** flips them all to the state of the row you pressed on and **submits once on release**; disabled tools are struck through and dimmed.
+- **In-list search**: filters by server name / tool name / description / aliases and expands matching cards; servers whose tool sets overlap by ≥70% are labelled "N tools overlap with X".
+
+### Fixed
+
+- **One dirty stored record used to fail the whole plugin** (the Settings page and every `mcp__*` tool disappeared, `fiberPhase=failed`, diagnosis `stored record '…' does not match its schema`). A hand-written server row carried a value outside the schema (`origin: "user"`, where only `plugin` / `cordis` are valid); opening the domain failed validation and `Service.init` threw.
+  - Data side: the row was repaired (`origin: "user"` → `"plugin"`) with a backup at `~/.dsh/storages/mcp_servers.json.bak-originfix-*`.
+  - Code side: the new UI preferences live in their **own storage domain** `mcp_ui`; a failure there now only loses the remembered placement instead of taking the plugin down.
+- **Style bleed from global CSS class collisions** (`.row`, `.muted`, `.panel`, `.section` reused across sheets). Every sheet is injected globally with an identity class map, so the sheet injected last silently restyled the others — the process-env editor (a four-column grid) inherited the server card's `.row` and rendered as stacked bordered boxes, and tool rows were padded out. The build now namespaces each module's classes (`<Module>__<class>`, in both the stylesheet text and the exported map) and a test forbids two sheets from defining the same selector.
+- **Pinning failed with `outcome.pins is not iterable`**: the Remote result arrives as a carrier `{ ok, value }` and `pins` was read off the carrier. It now goes through `unwrap()` like every other call, with fallbacks when `pins` / `aliases` are missing.
+- **"Pinned" looked lost after switching pages**: the prefs were always on disk; the page was rendering the inject snapshot taken at mount. It now re-reads the durable prefs on every mount (`prefsRead`).
+- **The JSON editor had no visible way back**: the same button toggles it but its label never changed. It now reads **"Back to list"** while open, and "Add server" closes the panel first.
+- **A brand-new server form looked like an error**: an empty name turned the hint red and greyed Save out. The hint now only turns red after editing or pressing Save, Save stays enabled, and pressing it with an empty name just marks the field.
+- **Chinese copy fell back to English** (`Back to list`): `serversJsonBack` was only added to the English dictionary. Both are filled in now, and the dictionary test checks **each dictionary separately**.
+
+### Changed
+
+- **The tool catalog merged into the MCP config list**: the standalone "Tool directory" module is gone — the config list is the main line, and each card owns its tools (expand). There is exactly one tool list.
+- **The tool list is a flow with multiple columns**: a tool no longer takes a whole row (2–3 per row on a wide panel), ordered checkbox → name → `?` (description popup) → pin.
+- **The pin is a text button**: `Pin` (outlined) and `Pinned` (outlined blue pill), with the hit area matching what is drawn. Pin accents use a dedicated blue (`#2f6fed`) because the light theme's `brand-primary` is near-black and tinting it only produced grey.
+- **The server editor replaces its row**: clicking Edit puts the form in the row's slot (it used to be inserted below the card, which read like two different servers); the title carries the server name; **Delete moved to the footer's far left** instead of sitting under the card's Edit button; short fields share a two-column row, switches are grouped, and the action row is sticky.
+- **The process-env editor moved up and is one variable per line**: display location → injection mode → env → config JSON → server list.
+- **The card's "Disable" button uses the error colour**: stopping a server removes it from the model, so it is coloured apart from ordinary actions.
+
+### Notes
+
+- Search hits still return the parameter schema (so they can be called directly); `list` returns names + descriptions only. The two modes are deliberately split.
+- Aliases are keyed by `serverName`; renaming a server drops its old aliases (no migration).
+- Not in this release: per-Session scoping and usage statistics (next batch).
+
 ## [1.15.4] - 2026-11-21
 
 - **Supported DSH version**: **dsh `0.2.2-rc.3`**

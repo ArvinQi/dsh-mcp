@@ -17,11 +17,18 @@
 **Highlights:**
 
 - **Visual management**: server list / create / edit / delete / test connection / enable-disable / refresh, all in the UI
+- **Selectable entry point (1.16.0)**: the management page lives in the **left sidebar** by default (one MCP rail icon opens a full page); it can also sit back in **Settings** or in **both**. The "Show in" picker applies immediately and the Host persists it; `config.placement` sets the first-run default
 - **Process-level environment variables**: a global key-value list (expanded by default, batch-add supported); injected into every stdio server's child process and referenced by streamable-http header values by bare name or `${NAME}`, substituted at connect time (e.g. `Authorization: Bearer ${TOKEN}`); a per-server env entry wins on collision
 - **Whole-list JSON config**: the "JSON config editor" panel views/edits every server as one JSON array; applying saves immediately (create/update/delete)
-- **Fine-grained tool control**: expand each server to see its tools, all checked by default; uncheck to load only what you need
+- **Fine-grained tool control**: a server's tools live inside its own card (all checked by default; uncheck to drop one). Each card also carries the search aliases, and a tool row shows its full description on hover
 - **Image result passthrough**: images returned by MCP tools (screenshots/charts) are projected through the attachment service into model image context, with strict preflight and bounded fallbacks (PR #4)
 - **Two injection modes**: `search` (on-demand, token-saving) and `full` (inject everything)
+- **Pinned tools (1.16.0)**: pin the tools you use daily and they stay visible even in `search` mode — no "search first" round-trip in a fresh Session, and a switched-off tool never comes back just because it is pinned
+- **Search upgrades (1.16.0)**: `server` scoping and a `list` mode; Chinese queries match by 2-gram (`提交代码` hits `提交` / `代码`), and each server can carry its own aliases (`提交,MR,评审`)
+- **`/mcp` command (1.16.0)**: `/mcp` for status, `on|off <server>`, `mode search|full`, `pin|unpin <tool or server>` — no browser needed
+- **Pinning (1.16.0)**: a "Pin / Pinned" text button at the end of each tool row pins or unpins it. Pinning means **always visible**: the tool stays in the model's set even in `search` mode, so no lookup is needed. The "Pinned tools" block above the list groups pins by server and can remove one, **unpin a whole MCP**, or clear everything; "Pinned only" narrows the list
+- **Bulk tool toggling (1.16.0)**: click a tool name to toggle whether it is injected, or **press and drag across rows** to flip a run of tools to the same state (taken from the row you pressed on); the change is submitted once on release, and disabled tools are struck through
+- **In-list search (1.16.0)**: the box above the list filters by server / tool name / description / alias and auto-expands the matching cards; same-family servers (≥70% shared tools) are flagged on the card meta row as "shares N tools with X"
 - **Zero npm dependencies**: plugs into DeepSeek Harness internals, install and go
 - **OAuth authentication**: for `streamable-http` servers using MCP OAuth (authorization-code + PKCE), the server card has an **Authorize** button and the **Host opens the system browser** for the login; the page then polls the authorization status every 5 seconds. Tokens and OAuth client info are persisted in the credentials document; when the access token expires the SDK **renews it silently** with the stored refresh token (no interruption, no browser), and only a revoked/expired refresh token needs re-authorization. **Before you authorize it only says "authorizing"; a real failure reports its reason**. **Path-based issuers are supported** (Appwrite's `/v1/oauth2/console`, Keycloak's `/realms/<realm>`, …): both discovery and the token exchange keep the issuer's full path instead of degrading to the site root (which makes `.well-known` answer 404 and leaves a completed authorization without stored tokens)
 - **HTTPS verified against the system trust store by default**: intranet/corporate CAs (roots installed in the OS keychain) no longer need `NODE_OPTIONS=--use-system-ca` on `dsh web`; the plugin merges the OS store into Node's default root store at startup
@@ -41,12 +48,13 @@ Migrated and merged from uncommitted MCP work in the `deepseek-harness` reposito
 - **Managed MCP server registry** (host): persistent definitions (storage-domain `mcp_servers`), per-server
   `@deepseek-ai/dsh-mcp-client` mounts, environment variable injection (plain values in the definition, secrets via credentials),
   connection probe (`test`).
-- **Web settings page** (client): Settings → MCP — list / edit / delete / test servers.
+- **Web management page** (client): the same page can occupy the **left-sidebar panel** (default) and/or **Settings → MCP** — list / edit / delete / test servers.
+- **Display-location preference** (host, `lib/index.js` → `uiPrefs` / `uiPrefsSet`): stored in its own domain `mcp_ui` (table `prefs`, row `view`), separate from the server definitions — a damaged preference costs at most the remembered location, never the management page. A page-level choice wins over `config.placement` in `cordis.patch.yml`.
 - **Server-level enable/disable**: disabling a server unmounts it and unregisters its tools immediately.
 - **Per-server refresh** button: re-pulls server status and tool list.
 - **Tool control**:
   - Injection mode: `search` (on-demand, default — the model hot-injects tools via `mcp_tool_search`) and `full` (inject every enabled tool each request).
-  - Expandable per-server tool list, all checked by default; unchecking a tool keeps it out of injection. Changes take effect immediately.
+  - Per-server tools live in the tool catalog (all checked by default); unchecking a tool keeps it out of injection. Changes take effect immediately.
 - **OAuth authentication** (host, `lib/oauth.js`): on a 401 + OAuth challenge from a `streamable-http`
   server, runs the authorization-code + PKCE flow — receives the callback on a loopback server,
   persists tokens, and refreshes them on demand; the settings page offers an "Authorize" button
@@ -88,6 +96,42 @@ Since 1.11.0 those declarations appear in Settings → MCP, badged "cordis decla
 - **OAuth is an explicit switch (since 1.11.1)**: an OAuth provider is attached only when the server sets `oauth: true` (the form's "Use OAuth authorization" checkbox, off by default). **Do not tick it for servers that authenticate with static tokens or custom headers** — otherwise a 401 is treated as an OAuth challenge and the plugin starts a `127.0.0.1:<port>/callback` loopback flow. Authorization is started from the settings page's button: a mount still opens the browser **at most once per server per process**, an unauthorized server renders "awaiting authorization" and polls every 5s instead of a failure, and "Test connection" no longer opens a browser — it returns the authorization-required marker and the button opens the page. Upgrading migrates automatically from existing OAuth credentials, so servers that genuinely need OAuth are unaffected.
 - **Safe degradation when the hot reload does not commit**: if the native tools have not unregistered within 5 seconds of writing the disable block (that profile's patch hot reload did not commit — a sibling entry failing its re-apply rolls the whole generation back), the plugin **registers the takeover without mounting** (the managed row is marked `pendingTakeover`); the next dsh start mounts it, and "Give back" reports the same need for a restart. A mount is also always skipped when same-named `mcp__<server>__` tools already exist without a local mount, so the plugin never fights a still-mounted declaration for one name.
 - **Tool search covers them**: search/hot injection and per-tool switches work by `mcp__` prefix across the whole tool set, so declared tools need no extra configuration.
+
+## Display location (left sidebar / Settings)
+
+The page has one implementation and two seats:
+
+| Seat | Slot | Notes |
+|---|---|---|
+| Left sidebar (default) | `sidebar.panellist` entry + `main` panel | Rail icon opens a full page with its own heading, padding and scroll container |
+| Settings | `settings.section` (id `mcp`) | the classic Settings → MCP |
+| Both | both seats registered | handy from either direction |
+
+- **Switch in the page**: the "Show in" radios take effect immediately (entries only — server configuration is untouched) and the Host stores the choice in the `mcp_ui` domain, so it survives restarts.
+- **First-run default** comes from `config.placement` when nothing is stored:
+
+```yaml
+- id: dsh-mcp
+  config:
+    placement: sidebar   # sidebar (default) | settings | both
+```
+
+- Choosing **Settings** withdraws the rail entry; if the panel is selected at that moment the UI returns to the Conversation, so no page is left without an entry. The `main` panel itself stays registered, so a panel selection never points at a missing key.
+
+## Search, pinned tools and `/mcp`
+
+- **`mcp_tool_search`**: `query` searches (returns name/description/parameter schema, callable right away); `server` narrows to one server; `list: true` (or no query) returns a cheap catalog of names + one-line descriptions.
+- **Pin**: click the pin icon left of a tool name (or `/mcp pin <tool>`); pinned tools stay resident in `search` mode, and the "Pinned tools" strip at the top of the list shows the whole set. It lives in `mcp_ui` → `prefs.pins`; the Host reads an in-memory mirror every model step.
+- **Aliases**: each card's tool panel carries its keywords (comma separated); they join the search and are keyed by `serverName`, so renaming a server requires re-entering them.
+- **`/mcp`**:
+
+```text
+/mcp                              status: mode / servers / tools / pins / per-server phase
+/mcp on|off <server>              enable or disable one server
+/mcp mode search|full             switch the injection mode
+/mcp pin|unpin <mcp__s__tool>     pin or unpin one tool
+/mcp pin|unpin <server>           pin or unpin a whole server
+```
 
 ## Structure
 

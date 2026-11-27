@@ -31,9 +31,9 @@ test("hostLocale resolves the DSH locale preference", () => {
 });
 
 test("hostText renders the localized copy for the current locale", () => {
-	assert.match(hostText(zhCtx, "toolSearchDesc"), /按关键词检索/);
+	assert.match(hostText(zhCtx, "toolSearchDesc"), /检索当前启用的 MCP 工具/);
 	assert.match(hostText(enCtx, "toolSearchDesc"), /Search the enabled MCP tools/);
-	assert.match(hostText(bareCtx, "toolSearchDesc"), /按关键词检索/, "unresolvable locale keeps zh");
+	assert.match(hostText(bareCtx, "toolSearchDesc"), /检索当前启用的 MCP 工具/, "unresolvable locale keeps zh");
 });
 
 test("hostText substitutes {placeholders}", () => {

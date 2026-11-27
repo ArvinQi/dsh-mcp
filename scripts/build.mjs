@@ -84,11 +84,18 @@ const require = createRequire(resolveEsbuild(CHECKOUT))
 const esbuild = require('esbuild')
 
 /**
- * Identity class map for one CSS module + the stylesheet text, as a JS module.
+ * Per-module class map + the stylesheet text, as a JS module.
  *
- * The class names are read from the selectors only (comments are stripped
- * first): a rule's explanatory comment may legitimately name a class that this
- * file does not define, and the identity map must not grow dead keys from it.
+ * Every sheet is injected into the host page globally, so a plain identity map
+ * is not just unsound, it silently breaks layouts: `.row` in one module and
+ * `.row` in another resolve to the same selector and the later sheet wins. That
+ * is how the process-env editor — a 4-column grid — ended up rendering as
+ * stacked bordered boxes (it inherited the server card's `.row`).
+ *
+ * Each module therefore namespaces its classes `<Module>__<class>` in both the
+ * stylesheet text and the exported map. The names are read from the selectors
+ * only (comments are stripped first): a rule's explanatory comment may name a
+ * class this file does not define, and the map must not grow dead keys.
  */
 function cssModuleLoader() {
   return {
@@ -100,7 +107,16 @@ function cssModuleLoader() {
         const classes = [...new Set(
           [...selectorText.matchAll(/\.([A-Za-z_][A-Za-z0-9_-]*)/g)].map((match) => match[1]),
         )]
-        const map = Object.fromEntries(classes.map((name) => [name, name]))
+        const moduleName = (args.path.split(/[/\\]/).pop() ?? 'module')
+          .replace(/\.module\.css$/, '')
+          .replace(/[^A-Za-z0-9_]/g, '_')
+        const scoped = (name) => `${moduleName}__${name}`
+        const map = Object.fromEntries(classes.map((name) => [name, scoped(name)]))
+        // Rewrite the selectors too; a class that a rule references but this
+        // file does not define is left alone (it belongs to another sheet).
+        const scopedCss = css.replace(/\.([A-Za-z_][A-Za-z0-9_-]*)/g, (match, name) => (
+          classes.includes(name) ? `.${scoped(name)}` : match
+        ))
         // Windows hands the CSS module loader backslash-separated paths.
         // Splitting only on '/' keeps the whole `C:\Users\...` prefix inside
         // `data-file`, and the runtime lookup below then builds
@@ -116,7 +132,7 @@ function cssModuleLoader() {
           `      const style = document.createElement('style');`,
           `      style.setAttribute('data-plugin', '${PLUGIN_ID}');`,
           `      style.setAttribute('data-file', '${file}');`,
-          `      style.textContent = ${JSON.stringify(css)};`,
+          `      style.textContent = ${JSON.stringify(scopedCss)};`,
           `      document.head.appendChild(style);`,
           `    }`,
           `  }`,
